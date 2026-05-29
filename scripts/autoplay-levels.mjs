@@ -11,6 +11,8 @@ const VIEWPORT = { width: 1280, height: 800 };
 const ARTIFACT_DIR = resolve('artifacts');
 const STRATEGY_LIMIT = Number(process.env.STRATEGY_LIMIT || 3);
 const CUT_DELAY_MS = Number(process.env.CUT_DELAY_MS || 35);
+const LEVEL_LIMIT = Number(process.env.LEVEL_LIMIT || 0);
+const REPORT_BASENAME = process.env.REPORT_BASENAME || 'autoplay-report';
 
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 
@@ -36,10 +38,11 @@ async function startPreviewServer() {
   if (process.env.GEOMETRY_SLICER_URL) return undefined;
   if (await isReachable(BASE_URL)) return undefined;
 
-  const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  const server = spawn(command, ['vite', 'preview', '--host', HOST, '--port', String(PORT), '--strictPort'], {
+  const command = process.execPath;
+  const viteCli = resolve('node_modules', 'vite', 'bin', 'vite.js');
+  const server = spawn(command, [viteCli, 'preview', '--host', HOST, '--port', String(PORT), '--strictPort'], {
     cwd: process.cwd(),
-    env: process.env,
+    env: { ...process.env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
@@ -59,6 +62,23 @@ async function startPreviewServer() {
 
   await waitForServer(BASE_URL);
   return server;
+}
+
+async function stopPreviewServer(server) {
+  if (!server) return;
+
+  if (process.platform === 'win32' && server.pid) {
+    await new Promise((resolveStop) => {
+      const killer = spawn('taskkill', ['/pid', String(server.pid), '/T', '/F'], {
+        stdio: 'ignore',
+      });
+      killer.on('exit', resolveStop);
+      killer.on('error', resolveStop);
+    });
+    return;
+  }
+
+  server.kill('SIGTERM');
 }
 
 function radialStrategy(cuts, phase = 0) {
@@ -194,8 +214,8 @@ async function playStrategy(page, chapterIndex, levelIndex, strategy) {
 }
 
 async function writeReport(report) {
-  await writeFile(resolve(ARTIFACT_DIR, 'autoplay-report.json'), `${JSON.stringify(report, null, 2)}\n`);
-  await writeFile(resolve(ARTIFACT_DIR, 'autoplay-report.md'), formatMarkdownReport(report));
+  await writeFile(resolve(ARTIFACT_DIR, `${REPORT_BASENAME}.json`), `${JSON.stringify(report, null, 2)}\n`);
+  await writeFile(resolve(ARTIFACT_DIR, `${REPORT_BASENAME}.md`), formatMarkdownReport(report));
 }
 
 async function main() {
@@ -215,6 +235,7 @@ async function main() {
       url: BASE_URL,
       viewport: VIEWPORT,
       strategyLimit: STRATEGY_LIMIT,
+      levelLimit: LEVEL_LIMIT,
       generatedAt: new Date().toISOString(),
       total: 0,
       passed: 0,
@@ -224,6 +245,8 @@ async function main() {
 
     for (let chapterIndex = 0; chapterIndex < chapters.length; chapterIndex++) {
       for (let levelIndex = 0; levelIndex < chapters[chapterIndex].levels; levelIndex++) {
+        if (LEVEL_LIMIT > 0 && results.length >= LEVEL_LIMIT) break;
+
         const level = await page.evaluate(({ chapter, level }) => {
           return window.__geometrySlicerTest.startLevel(chapter, level);
         }, { chapter: chapterIndex, level: levelIndex });
@@ -279,6 +302,8 @@ async function main() {
         report.failed = results.length - report.passed;
         await writeReport(report);
       }
+
+      if (LEVEL_LIMIT > 0 && results.length >= LEVEL_LIMIT) break;
     }
 
     const passed = results.filter((result) => result.passed).length;
@@ -289,16 +314,14 @@ async function main() {
     report.failed = failed;
 
     await writeReport(report);
-    await page.screenshot({ path: resolve(ARTIFACT_DIR, 'autoplay-final.png'), fullPage: false });
+    await page.screenshot({ path: resolve(ARTIFACT_DIR, `${REPORT_BASENAME}-final.png`), fullPage: false });
 
     if (failed > 0) {
       process.exitCode = 1;
     }
   } finally {
     if (browser) await browser.close();
-    if (server) {
-      server.kill();
-    }
+    await stopPreviewServer(server);
   }
 }
 
@@ -308,6 +331,8 @@ function formatMarkdownReport(report) {
     '',
     `- URL: ${report.url}`,
     `- Viewport: ${report.viewport.width}x${report.viewport.height}`,
+    `- Strategy limit: ${report.strategyLimit}`,
+    `- Level limit: ${report.levelLimit || 'all'}`,
     `- Generated: ${report.generatedAt}`,
     `- Passed: ${report.passed} / ${report.total}`,
     `- Failed: ${report.failed}`,
