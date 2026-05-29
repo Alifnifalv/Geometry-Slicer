@@ -461,11 +461,15 @@ export class MainScene extends Phaser.Scene {
 
     const wasCut = this.sliceShapes();
     if (wasCut) {
-      soundManager.playSliceSound();
-      playablesPlatform.trackEvent('slice');
-      this.cutsUsedThisLevel++;
-      this.lightImpact(18);
-      this.cameras.main.shake(150, 0.005);
+      try {
+        soundManager.playSliceSound();
+        playablesPlatform.trackEvent('slice');
+        this.cutsUsedThisLevel++;
+        this.lightImpact(18);
+        this.cameras.main.shake(150, 0.005);
+      } catch (e) {
+        console.warn('Juice effect failed:', e);
+      }
       this.cutsRemaining--;
       this.updateHUD();
       this.checkWinCondition();
