@@ -33,6 +33,11 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create() {
+    if (new URLSearchParams(window.location.search).has('autoplay')) {
+      this.scene.start('MainScene', { chapter: 0, level: 0 });
+      return;
+    }
+
     const progress = playablesPlatform.getProgress();
     this.selectedChapterIndex = Math.min(progress.chapter, Chapters.length - 1);
     this.selectedLevelIndex = Math.min(progress.level, Chapters[this.selectedChapterIndex].levels.length - 1);

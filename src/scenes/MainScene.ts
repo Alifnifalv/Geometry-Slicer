@@ -33,6 +33,50 @@ interface LevelEvaluation {
   feedback: string;
 }
 
+type TestOutcome = 'playing' | 'success' | 'failure';
+
+interface TestCutPoints {
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+}
+
+interface TestLevelResult {
+  outcome: TestOutcome;
+  chapter: number;
+  level: number;
+  accuracy: number;
+  grade: string;
+  feedback: string;
+}
+
+interface TestLevelState {
+  chapter: number;
+  level: number;
+  chapterName: string;
+  targetPieces: number;
+  maxCuts: number;
+  tolerance: number;
+  cutsRemaining: number;
+  cutsUsed: number;
+  pieces: number;
+  outcome: TestOutcome;
+  evaluation: LevelEvaluation | null;
+  lastResult: TestLevelResult | null;
+  viewport: { width: number; height: number };
+}
+
+declare global {
+  interface Window {
+    __geometrySlicerTest?: {
+      totalLevels: number;
+      chapters: { name: string; levels: number }[];
+      startLevel: (chapter: number, level: number) => TestLevelState;
+      getState: () => TestLevelState;
+      getCutPoints: (angle: number, offset?: number, length?: number) => TestCutPoints;
+    };
+  }
+}
+
 export class MainScene extends Phaser.Scene {
   private pieces: ShapePiece[] = [];
   private isDragging = false;
@@ -59,6 +103,8 @@ export class MainScene extends Phaser.Scene {
   private cutsRemaining = 0;
   private cutsUsedThisLevel = 0;
   private isLevelTransitioning = false;
+  private testOutcome: TestOutcome = 'playing';
+  private testLastResult: TestLevelResult | null = null;
 
   constructor() {
     super('MainScene');
@@ -114,6 +160,8 @@ export class MainScene extends Phaser.Scene {
     this.input.on('pointerdown', this.onPointerDown, this);
     this.input.on('pointermove', this.onPointerMove, this);
     this.input.on('pointerup', this.onPointerUp, this);
+
+    this.installTestHarness();
   }
 
   private createButtons() {
@@ -162,6 +210,8 @@ export class MainScene extends Phaser.Scene {
 
   private initLevel() {
     this.isLevelTransitioning = false;
+    this.testOutcome = 'playing';
+    this.testLastResult = null;
     this.percentageTexts.forEach(t => t.destroy());
     this.percentageTexts = [];
 
@@ -199,6 +249,67 @@ export class MainScene extends Phaser.Scene {
     this.updateHUD();
     this.showPopup(this.getLevelInstruction(), '#ffffff');
     this.drawPieces();
+  }
+
+  private isAutoplayMode(): boolean {
+    return new URLSearchParams(window.location.search).has('autoplay');
+  }
+
+  private installTestHarness() {
+    if (!this.isAutoplayMode()) return;
+
+    window.__geometrySlicerTest = {
+      totalLevels: Chapters.reduce((total, chapter) => total + chapter.levels.length, 0),
+      chapters: Chapters.map(chapter => ({ name: chapter.name, levels: chapter.levels.length })),
+      startLevel: (chapter: number, level: number) => {
+        this.time.removeAllEvents();
+        this.tweens.killAll();
+        this.currentChapterIndex = this.clampChapterIndex(chapter);
+        this.currentLevelIndex = this.clampLevelIndex(this.currentChapterIndex, level);
+        this.initLevel();
+        return this.getTestState();
+      },
+      getState: () => this.getTestState(),
+      getCutPoints: (angle: number, offset = 0, length = 0.68) => this.getTestCutPoints(angle, offset, length),
+    };
+  }
+
+  private getTestState(): TestLevelState {
+    const chapter = Chapters[this.currentChapterIndex];
+    const level = chapter.levels[this.currentLevelIndex];
+
+    return {
+      chapter: this.currentChapterIndex,
+      level: this.currentLevelIndex,
+      chapterName: chapter.name,
+      targetPieces: level.targetPieces,
+      maxCuts: level.maxCuts,
+      tolerance: level.tolerance,
+      cutsRemaining: this.cutsRemaining,
+      cutsUsed: this.cutsUsedThisLevel,
+      pieces: this.pieces.length,
+      outcome: this.testOutcome,
+      evaluation: this.evaluateLevel(),
+      lastResult: this.testLastResult,
+      viewport: {
+        width: this.scale.width,
+        height: this.scale.height,
+      },
+    };
+  }
+
+  private getTestCutPoints(angle: number, offset: number, length: number): TestCutPoints {
+    const dirX = Math.cos(angle);
+    const dirY = Math.sin(angle);
+    const normalX = -dirY;
+    const normalY = dirX;
+    const centerX = normalX * offset;
+    const centerY = normalY * offset;
+
+    return {
+      start: this.relativeToScreen(centerX - dirX * length, centerY - dirY * length),
+      end: this.relativeToScreen(centerX + dirX * length, centerY + dirY * length),
+    };
   }
 
   private getLevelInstruction(): string {
@@ -652,6 +763,15 @@ export class MainScene extends Phaser.Scene {
     const saveProgress = this.shouldAdvanceSavedProgress(nextProgress) ? nextProgress : undefined;
 
     this.isLevelTransitioning = true;
+    this.testOutcome = 'success';
+    this.testLastResult = {
+      outcome: 'success',
+      chapter: completedChapterIndex,
+      level: completedLevelIndex,
+      accuracy: evaluation.accuracy,
+      grade: evaluation.grade,
+      feedback: evaluation.feedback,
+    };
     this.currentChapterIndex = nextProgress.chapter;
     this.currentLevelIndex = nextProgress.level;
 
@@ -673,6 +793,8 @@ export class MainScene extends Phaser.Scene {
     } else {
       this.showPopup(`${evaluation.grade}! ${evaluation.accuracy.toFixed(1)}% accuracy`, '#00ff00');
     }
+
+    if (this.isAutoplayMode()) return;
 
     this.time.delayedCall(800, () => {
       this.pieces.forEach(piece => {
@@ -711,9 +833,20 @@ export class MainScene extends Phaser.Scene {
     soundManager.playLoseSound();
     this.lightImpact(90);
     this.isLevelTransitioning = true;
+    this.testOutcome = 'failure';
+    this.testLastResult = {
+      outcome: 'failure',
+      chapter: this.currentChapterIndex,
+      level: this.currentLevelIndex,
+      accuracy: evaluation.accuracy,
+      grade: evaluation.grade,
+      feedback: evaluation.feedback,
+    };
     playablesPlatform.trackEvent('level_fail');
     await playablesPlatform.saveAnalytics();
     this.showPopup(`Try again: ${evaluation.feedback}`, '#ff4455');
+
+    if (this.isAutoplayMode()) return;
 
     this.time.delayedCall(2600, () => {
       this.initLevel();
