@@ -1,4 +1,4 @@
-name: Deploy game to GitHub Pages
+name: Deploy Geometry Slicer to GitHub Pages
 
 on:
   push:
