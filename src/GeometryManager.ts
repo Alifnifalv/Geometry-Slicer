@@ -1,4 +1,7 @@
-import * as PolyBool from 'polybooljs';
+import * as PolyBoolModule from 'polybooljs';
+import type { Polygon } from 'polybooljs';
+
+const PolyBool = ((PolyBoolModule as { default?: typeof PolyBoolModule }).default || PolyBoolModule);
 
 export class GeometryManager {
   /**
@@ -44,12 +47,12 @@ export class GeometryManager {
       [p1.x - ex_x + nx, p1.y - ex_y + ny]
     ];
 
-    const halfPlanePoly: PolyBool.Polygon = {
+    const halfPlanePoly: Polygon = {
       regions: [halfPlaneRegion],
       inverted: false
     };
 
-    const targetPoly: PolyBool.Polygon = {
+    const targetPoly: Polygon = {
       regions: regions,
       inverted: false
     };
