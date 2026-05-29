@@ -7,6 +7,14 @@ export default defineConfig({
     // YouTube Playables has strict size and loading requirements
     target: 'esnext',
     minify: 'terser',
+    rolldownOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/phaser')) return 'phaser';
+          if (id.includes('node_modules/polybooljs')) return 'geometry';
+        }
+      }
+    },
     terserOptions: {
       compress: {
         drop_console: true, // Remove console.logs for production performance

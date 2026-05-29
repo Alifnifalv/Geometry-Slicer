@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GeometryManager } from '../GeometryManager';
 import { Chapters } from '../LevelData';
+import { playablesPlatform } from '../playables';
 
 interface ShapePiece {
   region: number[][]; // Polygon vertices in relative world space (e.g., -0.5 to 0.5)
@@ -42,20 +43,9 @@ export class MainScene extends Phaser.Scene {
   }
 
   init() {
-    const saved = localStorage.getItem('geometrySlicerProgress');
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
-        this.currentChapterIndex = data.chapter || 0;
-        this.currentLevelIndex = data.level || 0;
-      } catch (e) {
-        this.currentChapterIndex = 0;
-        this.currentLevelIndex = 0;
-      }
-    } else {
-      this.currentChapterIndex = 0;
-      this.currentLevelIndex = 0;
-    }
+    const progress = playablesPlatform.getProgress();
+    this.currentChapterIndex = progress.chapter;
+    this.currentLevelIndex = progress.level;
   }
 
   create() {
@@ -534,13 +524,11 @@ export class MainScene extends Phaser.Scene {
         this.currentChapterIndex++;
       }
 
-      // Save progress to localStorage
-      if (this.currentChapterIndex < Chapters.length) {
-        localStorage.setItem('geometrySlicerProgress', JSON.stringify({
-          chapter: this.currentChapterIndex,
-          level: this.currentLevelIndex
-        }));
-      }
+      void playablesPlatform.saveProgress({
+        chapter: this.currentChapterIndex,
+        level: this.currentLevelIndex,
+        completed: this.currentChapterIndex >= Chapters.length
+      });
 
       if (isChapterComplete) {
         if (this.currentChapterIndex >= Chapters.length) {

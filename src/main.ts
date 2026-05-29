@@ -2,6 +2,7 @@ import './style.css';
 import Phaser from 'phaser';
 import { MainScene } from './scenes/MainScene';
 import { MenuScene } from './scenes/MenuScene';
+import { playablesPlatform } from './playables';
 
 const config = {
   type: Phaser.AUTO,
@@ -21,4 +22,6 @@ const config = {
   scene: [MenuScene, MainScene]
 };
 
-new Phaser.Game(config);
+await playablesPlatform.init();
+const game = new Phaser.Game(config);
+playablesPlatform.configureRuntime(game);

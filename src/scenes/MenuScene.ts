@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { playablesPlatform } from '../playables';
 
 export class MenuScene extends Phaser.Scene {
   private titleText!: Phaser.GameObjects.Text;
@@ -33,8 +34,7 @@ export class MenuScene extends Phaser.Scene {
       fontStyle: 'italic'
     }).setOrigin(0.5);
 
-    const saved = localStorage.getItem('geometrySlicerProgress');
-    const hasProgress = saved !== null;
+    const hasProgress = playablesPlatform.hasProgress();
 
     // Play Button Container
     this.playButton = this.add.container(0, 0);
@@ -73,7 +73,7 @@ export class MenuScene extends Phaser.Scene {
       newZone.on('pointerdown', () => this.newGameButton!.setScale(0.95));
       newZone.on('pointerup', () => {
         this.newGameButton!.setScale(1);
-        localStorage.removeItem('geometrySlicerProgress');
+        void playablesPlatform.resetProgress();
         this.scene.start('MainScene');
       });
       newZone.on('pointerout', () => this.newGameButton!.setScale(1));
@@ -81,6 +81,8 @@ export class MenuScene extends Phaser.Scene {
 
     this.scale.on('resize', this.resize, this);
     this.resize(this.scale.gameSize);
+    playablesPlatform.notifyFirstFrameReady();
+    playablesPlatform.notifyGameReady();
   }
 
   update() {

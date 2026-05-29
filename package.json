@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:playables": "npm run build && powershell -ExecutionPolicy Bypass -File scripts/package-playables.ps1",
     "preview": "vite preview"
   },
   "devDependencies": {
