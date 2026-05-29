@@ -18,11 +18,13 @@ export class MainScene extends Phaser.Scene {
   private uiGraphics!: Phaser.GameObjects.Graphics;
   private messageText!: Phaser.GameObjects.Text;
   private uiText!: Phaser.GameObjects.Text;
+  private uiTextBg!: Phaser.GameObjects.Graphics;
   private percentageTexts: Phaser.GameObjects.Text[] = [];
 
   private btnMenu!: Phaser.GameObjects.Container;
   private btnRestart!: Phaser.GameObjects.Container;
   private popupBg!: Phaser.GameObjects.Graphics;
+  private bgGrid!: Phaser.GameObjects.Grid;
 
   private baseScale = 1;
   private centerX = 0;
@@ -55,6 +57,9 @@ export class MainScene extends Phaser.Scene {
   }
 
   create() {
+    // Subtle background grid
+    this.bgGrid = this.add.grid(0, 0, 800, 800, 40, 40, 0x1a1a1a, 1, 0x333333, 0.5).setOrigin(0, 0);
+
     this.graphics = this.add.graphics();
     this.uiGraphics = this.add.graphics();
 
@@ -66,10 +71,12 @@ export class MainScene extends Phaser.Scene {
       align: 'center'
     }).setOrigin(0.5);
 
+    this.uiTextBg = this.add.graphics();
     this.uiText = this.add.text(20, 20, '', {
-      fontSize: '20px',
+      fontSize: '18px',
       color: '#ffffff',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      lineSpacing: 4
     });
 
     this.createButtons();
@@ -85,35 +92,37 @@ export class MainScene extends Phaser.Scene {
   }
 
   private createButtons() {
-    // Menu Button
-    this.btnMenu = this.add.container(0, 0);
-    const bgMenu = this.add.graphics().fillStyle(0x333333, 0.8).fillRoundedRect(-40, -20, 80, 40, 8);
-    const txtMenu = this.add.text(0, 0, 'MENU', { fontSize: '16px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
-    this.btnMenu.add([bgMenu, txtMenu]);
-    const zoneMenu = this.add.zone(0, 0, 80, 40).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    this.btnMenu.add(zoneMenu);
-    
-    zoneMenu.on('pointerdown', () => this.btnMenu.setScale(0.9));
-    zoneMenu.on('pointerup', () => {
+    // Helper for polished buttons
+    const createBtn = (text: string, color: number) => {
+      const container = this.add.container(0, 0);
+      // Drop shadow
+      const shadow = this.add.graphics().fillStyle(0x000000, 0.4).fillRoundedRect(-48, -18, 96, 36, 18);
+      const bg = this.add.graphics().fillStyle(color, 1).fillRoundedRect(-50, -20, 100, 40, 20);
+      bg.lineStyle(2, 0xffffff, 0.3).strokeRoundedRect(-50, -20, 100, 40, 20);
+      const txt = this.add.text(0, 0, text, { fontSize: '14px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+      container.add([shadow, bg, txt]);
+      const zone = this.add.zone(0, 0, 100, 40).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      container.add(zone);
+      return { container, zone };
+    };
+
+    const menu = createBtn('MENU', 0x333333);
+    this.btnMenu = menu.container;
+    menu.zone.on('pointerdown', () => this.btnMenu.setScale(0.9));
+    menu.zone.on('pointerup', () => {
       this.btnMenu.setScale(1);
       this.scene.start('MenuScene');
     });
-    zoneMenu.on('pointerout', () => this.btnMenu.setScale(1));
+    menu.zone.on('pointerout', () => this.btnMenu.setScale(1));
 
-    // Restart Button
-    this.btnRestart = this.add.container(0, 0);
-    const bgRes = this.add.graphics().fillStyle(0xffaa00, 0.8).fillRoundedRect(-50, -20, 100, 40, 8);
-    const txtRes = this.add.text(0, 0, 'RESTART', { fontSize: '16px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
-    this.btnRestart.add([bgRes, txtRes]);
-    const zoneRes = this.add.zone(0, 0, 100, 40).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    this.btnRestart.add(zoneRes);
-
-    zoneRes.on('pointerdown', () => this.btnRestart.setScale(0.9));
-    zoneRes.on('pointerup', () => {
+    const restart = createBtn('RESTART', 0xffaa00);
+    this.btnRestart = restart.container;
+    restart.zone.on('pointerdown', () => this.btnRestart.setScale(0.9));
+    restart.zone.on('pointerup', () => {
       this.btnRestart.setScale(1);
       this.initLevel();
     });
-    zoneRes.on('pointerout', () => this.btnRestart.setScale(1));
+    restart.zone.on('pointerout', () => this.btnRestart.setScale(1));
   }
 
   private initLevel() {
@@ -147,7 +156,17 @@ export class MainScene extends Phaser.Scene {
 
   private updateHUD() {
     const chapterName = Chapters[this.currentChapterIndex].name;
-    this.uiText.setText(`Chapter ${this.currentChapterIndex + 1}: ${chapterName}\nLevel: ${this.currentLevelIndex + 1}\nCuts Remaining: ${this.cutsRemaining}`);
+    this.uiText.setText(`CHAPTER ${this.currentChapterIndex + 1}: ${chapterName.toUpperCase()}\nLEVEL ${this.currentLevelIndex + 1}   |   CUTS LEFT: ${this.cutsRemaining}`);
+    
+    // Draw pill background behind UI text
+    this.time.delayedCall(10, () => {
+      this.uiTextBg.clear();
+      const bounds = this.uiText.getBounds();
+      this.uiTextBg.fillStyle(0x000000, 0.7);
+      this.uiTextBg.fillRoundedRect(bounds.x - 15, bounds.y - 10, bounds.width + 30, bounds.height + 20, 16);
+      this.uiTextBg.lineStyle(2, 0xffffff, 0.2);
+      this.uiTextBg.strokeRoundedRect(bounds.x - 15, bounds.y - 10, bounds.width + 30, bounds.height + 20, 16);
+    });
   }
 
   private resize(gameSize: Phaser.Structs.Size) {
@@ -156,23 +175,27 @@ export class MainScene extends Phaser.Scene {
 
     this.centerX = width / 2;
     this.centerY = height / 2;
+    // Scale grid
+    this.bgGrid.setDisplaySize(width, height);
+    
     // Keep a larger margin for mobile finger space (scale to 70%)
     this.baseScale = Math.min(width, height) * 0.7;
 
     // Dynamic responsive font sizes
     this.messageText.setFontSize(Math.max(16, this.baseScale * 0.1));
-    this.messageText.setPosition(this.centerX, height * 0.15); // Avoid top notches and buttons
-    this.messageText.setWordWrapWidth(width * 0.85); // Prevent text clipping on narrow mobile screens
+    this.messageText.setPosition(this.centerX, height * 0.15); 
+    this.messageText.setWordWrapWidth(width * 0.85); 
     
     // Resize popup bg to match text
     this.drawPopupBg();
 
-    this.uiText.setFontSize(Math.max(14, this.baseScale * 0.06));
-    // Position HUD at the bottom left for mobile accessibility
-    this.uiText.setPosition(width * 0.05, height * 0.85); 
+    this.uiText.setFontSize(Math.max(12, this.baseScale * 0.05));
+    // Position HUD centered at bottom
+    this.uiText.setPosition(this.centerX - this.uiText.width / 2, height * 0.88); 
+    this.updateHUD(); // force bg redraw
 
     this.btnMenu.setPosition(60, 40);
-    this.btnRestart.setPosition(width - 70, 40);
+    this.btnRestart.setPosition(width - 60, 40);
 
     // Redraw pieces with the new scale
     this.drawPieces();
@@ -192,13 +215,24 @@ export class MainScene extends Phaser.Scene {
     const padX = 20;
     const padY = 10;
     
-    this.popupBg.fillStyle(0x000000, 0.6);
+    this.popupBg.fillStyle(0x000000, 0.8);
     this.popupBg.fillRoundedRect(
       bounds.x - padX, 
       bounds.y - padY, 
       bounds.width + padX * 2, 
       bounds.height + padY * 2, 
-      12
+      16
+    );
+    const messageColor = typeof this.messageText.style.color === 'string'
+      ? this.messageText.style.color
+      : '#ffffff';
+    this.popupBg.lineStyle(3, Phaser.Display.Color.HexStringToColor(messageColor).color, 0.8);
+    this.popupBg.strokeRoundedRect(
+      bounds.x - padX, 
+      bounds.y - padY, 
+      bounds.width + padX * 2, 
+      bounds.height + padY * 2, 
+      16
     );
   }
 
@@ -422,8 +456,17 @@ export class MainScene extends Phaser.Scene {
           color: '#ffffff',
           fontStyle: 'bold',
           stroke: '#000000',
-          strokeThickness: 4
+          strokeThickness: 6
         }).setOrigin(0.5);
+        
+        // Pop-in animation
+        this.tweens.add({
+          targets: text,
+          scale: { from: 0, to: 1 },
+          ease: 'Back.easeOut',
+          duration: 400,
+          delay: i * 50 // stagger effect
+        });
         
         this.percentageTexts.push(text);
       }
