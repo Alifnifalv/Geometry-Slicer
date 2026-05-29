@@ -324,7 +324,11 @@ class PlayablesPlatform {
       return;
     }
 
-    localStorage.setItem(SAVE_KEY, data);
+    try {
+      localStorage.setItem(SAVE_KEY, data);
+    } catch (e) {
+      console.warn('Could not save progress to localStorage', e);
+    }
   }
 }
 
