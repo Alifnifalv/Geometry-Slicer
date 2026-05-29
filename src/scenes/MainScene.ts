@@ -7,6 +7,8 @@ interface ShapePiece {
   color: number;
   offsetX: number; // Relative offset
   offsetY: number; // Relative offset
+  alpha: number;
+  scale: number;
 }
 
 export class MainScene extends Phaser.Scene {
@@ -147,8 +149,18 @@ export class MainScene extends Phaser.Scene {
       region: level.shape,
       color: 0x4488ff,
       offsetX: 0,
-      offsetY: 0
+      offsetY: 0,
+      alpha: 1,
+      scale: 0 // Start small for animation
     }];
+
+    this.tweens.add({
+      targets: this.pieces,
+      scale: 1,
+      ease: 'Back.easeOut',
+      duration: 600,
+      onUpdate: () => this.drawPieces()
+    });
 
     this.updateHUD();
     this.showPopup(`Slice into ${level.targetPieces} equal pieces!`, '#ffffff');
@@ -207,7 +219,20 @@ export class MainScene extends Phaser.Scene {
   private showPopup(text: string, color: string) {
     this.messageText.setText(text);
     this.messageText.setColor(color);
-    this.drawPopupBg();
+    this.messageText.setScale(0.5);
+    this.messageText.setAlpha(0);
+    
+    // Kill any existing tweens on the message text
+    this.tweens.killTweensOf(this.messageText);
+
+    this.tweens.add({
+      targets: this.messageText,
+      scale: 1,
+      alpha: 1,
+      ease: 'Back.easeOut',
+      duration: 400,
+      onUpdate: () => this.drawPopupBg()
+    });
   }
 
   private drawPopupBg() {
@@ -328,16 +353,18 @@ export class MainScene extends Phaser.Scene {
           // e.g. 0.02 relative units
           const pushForce = 0.02;
 
-          newPieces.push({
-            region: r,
-            color: newColor,
-            offsetX: nx * sign * pushForce,
-            offsetY: ny * sign * pushForce
-          });
+            newPieces.push({
+              region: r,
+              color: newColor,
+              offsetX: nx * sign * pushForce,
+              offsetY: ny * sign * pushForce,
+              alpha: 1,
+              scale: 1
+            });
+          }
+        } else {
+          newPieces.push(piece);
         }
-      } else {
-        newPieces.push(piece);
-      }
     }
 
     if (wasSliced) {
@@ -353,18 +380,30 @@ export class MainScene extends Phaser.Scene {
     this.graphics.clear();
 
     for (const piece of this.pieces) {
-      this.graphics.fillStyle(piece.color, 1);
+      this.graphics.fillStyle(piece.color, piece.alpha);
       // Scale line stroke thickness dynamically
-      this.graphics.lineStyle(Math.max(2, this.baseScale * 0.01), 0xffffff, 1);
+      this.graphics.lineStyle(Math.max(2, this.baseScale * 0.01), 0xffffff, piece.alpha);
       this.graphics.beginPath();
       
       const region = piece.region;
       if (region.length > 0) {
-        const startPoint = this.relativeToScreen(region[0][0] + piece.offsetX, region[0][1] + piece.offsetY);
+        // Calculate centroid of the raw region for scaling around its own center
+        const centroid = GeometryManager.getCentroid(region);
+        
+        const transformPoint = (p: number[]) => {
+          // Move to origin, scale, move back to centroid, then apply offsets
+          const dx = p[0] - centroid.x;
+          const dy = p[1] - centroid.y;
+          const sx = centroid.x + dx * piece.scale + piece.offsetX;
+          const sy = centroid.y + dy * piece.scale + piece.offsetY;
+          return this.relativeToScreen(sx, sy);
+        };
+
+        const startPoint = transformPoint(region[0]);
         this.graphics.moveTo(startPoint.x, startPoint.y);
         
         for (let i = 1; i < region.length; i++) {
-          const p = this.relativeToScreen(region[i][0] + piece.offsetX, region[i][1] + piece.offsetY);
+          const p = transformPoint(region[i]);
           this.graphics.lineTo(p.x, p.y);
         }
         
@@ -511,6 +550,32 @@ export class MainScene extends Phaser.Scene {
       } else {
         this.showPopup('Level Complete!', '#00ff00');
       }
+
+      // Explode pieces outward animation
+      this.time.delayedCall(800, () => {
+        this.pieces.forEach(piece => {
+          const centroid = GeometryManager.getCentroid(piece.region);
+          this.tweens.add({
+            targets: piece,
+            offsetX: piece.offsetX + centroid.x * 1.5,
+            offsetY: piece.offsetY + centroid.y * 1.5,
+            alpha: 0,
+            scale: 0.5,
+            ease: 'Power2',
+            duration: 1000,
+            onUpdate: () => this.drawPieces()
+          });
+        });
+        
+        // Also fade out percentages
+        this.percentageTexts.forEach(t => {
+          this.tweens.add({
+            targets: t,
+            alpha: 0,
+            duration: 500
+          });
+        });
+      });
       
       this.time.delayedCall(2000, () => {
         this.initLevel();
