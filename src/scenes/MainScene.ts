@@ -305,13 +305,15 @@ export class MainScene extends Phaser.Scene {
 
     if (len < 10) return; // Ignore tiny lines
 
-    this.cutsRemaining--;
-    this.updateHUD();
-    
-    this.sliceShapes();
+    const wasCut = this.sliceShapes();
+    if (wasCut) {
+      this.cutsRemaining--;
+      this.updateHUD();
+      this.checkWinCondition();
+    }
   }
 
-  private sliceShapes() {
+  private sliceShapes(): boolean {
     let newPieces: ShapePiece[] = [];
     let wasSliced = false;
 
@@ -372,8 +374,7 @@ export class MainScene extends Phaser.Scene {
       this.drawPieces();
     }
     
-    // Always check win condition after slice attempt to handle failure logic properly
-    this.checkWinCondition();
+    return wasSliced;
   }
 
   private drawPieces() {
