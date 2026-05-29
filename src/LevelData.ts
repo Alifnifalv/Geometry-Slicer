@@ -29,6 +29,17 @@ function generateCircle(radius: number = 0.4): number[][] {
   return generatePolygon(60, radius);
 }
 
+function generateRectangle(width: number = 0.76, height: number = 0.48): number[][] {
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  return [
+    [-halfWidth, -halfHeight],
+    [halfWidth, -halfHeight],
+    [halfWidth, halfHeight],
+    [-halfWidth, halfHeight]
+  ];
+}
+
 // Helper to generate a star shape
 function generateStar(points: number, outerRadius: number = 0.4, innerRadius: number = 0.2): number[][] {
   const shape: number[][] = [];
@@ -144,8 +155,8 @@ function generatePointSymmetricGear(teeth: number, outer: number = 0.45, inner: 
 
 // Determine tolerance based on global level 0 to 99
 function getTolerance(globalLevelIndex: number): number {
-  // Starts at 12% (0.12) and linearly goes down to 1% (0.01) over 100 levels
-  const maxTol = 0.12;
+  // Starts forgiving for onboarding and gradually tightens to 1%.
+  const maxTol = 0.18;
   const minTol = 0.01;
   return maxTol - (globalLevelIndex / 99) * (maxTol - minTol);
 }
@@ -153,9 +164,15 @@ function getTolerance(globalLevelIndex: number): number {
 // Generate 10 levels for Chapter 1 (1 Cut, 2 Pieces)
 const chapter1Levels: LevelConfig[] = [];
 for (let i = 0; i < 10; i++) {
-  const tol = getTolerance(i);
-  if (i === 2) {
-    chapter1Levels.push({ shape: generateCircle(0.4), targetPieces: 2, maxCuts: 1, tolerance: tol });
+  const tol = i < 4 ? 0.2 : getTolerance(i);
+  if (i === 0) {
+    chapter1Levels.push({ shape: generateRectangle(), targetPieces: 2, maxCuts: 1, tolerance: tol });
+  } else if (i === 1) {
+    chapter1Levels.push({ shape: generateCircle(0.38), targetPieces: 2, maxCuts: 1, tolerance: tol });
+  } else if (i === 2) {
+    chapter1Levels.push({ shape: generatePolygon(4, 0.4), targetPieces: 2, maxCuts: 1, tolerance: tol });
+  } else if (i === 3) {
+    chapter1Levels.push({ shape: generatePolygon(6, 0.4), targetPieces: 2, maxCuts: 1, tolerance: tol });
   } else if (i === 4) {
     chapter1Levels.push({ shape: cShape, targetPieces: 2, maxCuts: 1, tolerance: tol });
   } else if (i === 6) {

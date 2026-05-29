@@ -24,6 +24,8 @@ The zip root contains `index.html` and the generated assets folder.
 - Keeps local browser saves on `localStorage` when outside Playables.
 - Handles YouTube audio mute state and pause/resume callbacks.
 - Uses relative asset paths in the production bundle.
+- Includes draft portal assets: `public/playables-icon.svg` and `public/playables-thumbnail.svg`.
+- Tracks lightweight gameplay counters in save data: sessions, level starts, slices, completions, failures, and restarts.
 
 ## Remaining publishing step
 

@@ -1,6 +1,7 @@
 export class SoundManager {
   private ctx: AudioContext | null = null;
   private isInitialized = false;
+  private muted = false;
 
   init() {
     if (this.isInitialized) return;
@@ -10,19 +11,29 @@ export class SoundManager {
         this.ctx = new AudioContextClass();
         this.isInitialized = true;
       }
-    } catch (e) {
-      console.error("Web Audio API not supported", e);
+    } catch {
+      this.isInitialized = false;
     }
   }
 
   resume() {
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      void this.ctx.resume();
     }
   }
 
+  suspend() {
+    if (this.ctx && this.ctx.state === 'running') {
+      void this.ctx.suspend();
+    }
+  }
+
+  setMuted(muted: boolean) {
+    this.muted = muted;
+  }
+
   playSliceSound() {
-    if (!this.ctx) return;
+    if (!this.ctx || this.muted) return;
     this.resume();
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
@@ -41,7 +52,7 @@ export class SoundManager {
   }
 
   playWinSound() {
-    if (!this.ctx) return;
+    if (!this.ctx || this.muted) return;
     this.resume();
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
@@ -65,7 +76,7 @@ export class SoundManager {
   }
 
   playLoseSound() {
-    if (!this.ctx) return;
+    if (!this.ctx || this.muted) return;
     this.resume();
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
@@ -84,7 +95,7 @@ export class SoundManager {
   }
   
   playClickSound() {
-    if (!this.ctx) return;
+    if (!this.ctx || this.muted) return;
     this.resume();
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();

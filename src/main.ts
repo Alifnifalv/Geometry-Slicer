@@ -2,6 +2,7 @@ import './style.css';
 import Phaser from 'phaser';
 import { MainScene } from './scenes/MainScene';
 import { MenuScene } from './scenes/MenuScene';
+import { TutorialScene } from './scenes/TutorialScene';
 import { playablesPlatform } from './playables';
 
 const config = {
@@ -19,7 +20,7 @@ const config = {
   // @ts-ignore
   autoDensity: true,
   antialias: true, // Ensure smooth lines
-  scene: [MenuScene, MainScene]
+  scene: [MenuScene, TutorialScene, MainScene]
 };
 
 await playablesPlatform.init();

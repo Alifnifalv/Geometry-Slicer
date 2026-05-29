@@ -13,6 +13,26 @@ interface ShapePiece {
   scale: number;
 }
 
+interface MainSceneData {
+  chapter?: number;
+  level?: number;
+}
+
+interface LevelEvaluation {
+  areas: number[];
+  totalPixelArea: number;
+  targetArea: number;
+  targetPercent: number;
+  maxDiff: number;
+  largestPercent: number;
+  smallestPercent: number;
+  isPieceCountCorrect: boolean;
+  isSuccess: boolean;
+  accuracy: number;
+  grade: string;
+  feedback: string;
+}
+
 export class MainScene extends Phaser.Scene {
   private pieces: ShapePiece[] = [];
   private isDragging = false;
@@ -37,16 +57,27 @@ export class MainScene extends Phaser.Scene {
   private currentChapterIndex = 0;
   private currentLevelIndex = 0;
   private cutsRemaining = 0;
+  private cutsUsedThisLevel = 0;
   private isLevelTransitioning = false;
 
   constructor() {
     super('MainScene');
   }
 
-  init() {
+  init(data: MainSceneData = {}) {
     const progress = playablesPlatform.getProgress();
-    this.currentChapterIndex = progress.chapter;
-    this.currentLevelIndex = progress.level;
+    this.currentChapterIndex = this.clampChapterIndex(data.chapter ?? progress.chapter);
+    this.currentLevelIndex = this.clampLevelIndex(this.currentChapterIndex, data.level ?? progress.level);
+  }
+
+  private clampChapterIndex(chapterIndex: number): number {
+    if (Chapters.length === 0) return 0;
+    return Phaser.Math.Clamp(Math.floor(chapterIndex), 0, Chapters.length - 1);
+  }
+
+  private clampLevelIndex(chapterIndex: number, levelIndex: number): number {
+    const levels = Chapters[chapterIndex]?.levels.length ?? 1;
+    return Phaser.Math.Clamp(Math.floor(levelIndex), 0, Math.max(0, levels - 1));
   }
 
   create() {
@@ -121,6 +152,8 @@ export class MainScene extends Phaser.Scene {
     });
     restart.zone.on('pointerup', () => {
       soundManager.playClickSound();
+      playablesPlatform.trackEvent('restart');
+      void playablesPlatform.saveAnalytics();
       this.btnRestart.setScale(1);
       this.initLevel();
     });
@@ -143,6 +176,8 @@ export class MainScene extends Phaser.Scene {
     const chapter = Chapters[this.currentChapterIndex];
     const level = chapter.levels[this.currentLevelIndex];
     this.cutsRemaining = level.maxCuts;
+    this.cutsUsedThisLevel = 0;
+    void playablesPlatform.recordAttempt(this.currentChapterIndex, this.currentLevelIndex);
 
     this.pieces = [{
       region: level.shape,
@@ -162,8 +197,16 @@ export class MainScene extends Phaser.Scene {
     });
 
     this.updateHUD();
-    this.showPopup(`Slice into ${level.targetPieces} equal pieces!`, '#ffffff');
+    this.showPopup(this.getLevelInstruction(), '#ffffff');
     this.drawPieces();
+  }
+
+  private getLevelInstruction(): string {
+    const level = Chapters[this.currentChapterIndex].levels[this.currentLevelIndex];
+    if (this.currentChapterIndex === 0 && this.currentLevelIndex < 3) {
+      return `Tutorial challenge: cut through the center to make ${level.targetPieces} equal pieces.`;
+    }
+    return `Slice into ${level.targetPieces} equal pieces.`;
   }
 
   private updateHUD() {
@@ -308,10 +351,21 @@ export class MainScene extends Phaser.Scene {
     const wasCut = this.sliceShapes();
     if (wasCut) {
       soundManager.playSliceSound();
+      playablesPlatform.trackEvent('slice');
+      this.cutsUsedThisLevel++;
+      this.lightImpact(18);
       this.cameras.main.shake(150, 0.005);
       this.cutsRemaining--;
       this.updateHUD();
       this.checkWinCondition();
+    } else {
+      this.showPopup('No slice made. Draw across the shape.', '#ffaa00');
+    }
+  }
+
+  private lightImpact(duration: number) {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(duration);
     }
   }
 
@@ -416,7 +470,14 @@ export class MainScene extends Phaser.Scene {
       }
     }
 
-    // Draw a prominent center reference anchor point to help with logical cuts
+    // Draw center crosshair and anchor point to help with logical cuts.
+    const guideRadius = Math.max(42, this.baseScale * 0.12);
+    this.graphics.lineStyle(2, 0xffffff, 0.22);
+    this.graphics.lineBetween(this.centerX - guideRadius, this.centerY, this.centerX + guideRadius, this.centerY);
+    this.graphics.lineBetween(this.centerX, this.centerY - guideRadius, this.centerX, this.centerY + guideRadius);
+    this.graphics.lineStyle(1, 0x00ff99, 0.28);
+    this.graphics.strokeCircle(this.centerX, this.centerY, guideRadius * 0.55);
+
     this.graphics.fillStyle(0xffffff, 0.8);
     this.graphics.lineStyle(2, 0x000000, 1);
     this.graphics.beginPath();
@@ -448,151 +509,246 @@ export class MainScene extends Phaser.Scene {
         this.uiGraphics.strokePath();
       }
     }
+
+    this.uiGraphics.fillStyle(0x00ff99, 1);
+    this.uiGraphics.fillCircle(this.startPoint.x, this.startPoint.y, Math.max(5, this.baseScale * 0.012));
+    this.uiGraphics.fillStyle(0xffffff, 1);
+    this.uiGraphics.fillCircle(this.endPoint.x, this.endPoint.y, Math.max(5, this.baseScale * 0.012));
   }
 
   private checkWinCondition() {
     if (this.isLevelTransitioning) return;
     if (this.currentChapterIndex >= Chapters.length) return;
-    
-    const level = Chapters[this.currentChapterIndex].levels[this.currentLevelIndex];
 
+    const evaluation = this.evaluateLevel();
+    if (!evaluation) return;
+
+    if (evaluation.isSuccess || this.cutsRemaining <= 0) {
+      this.applyAreaFeedbackColors(evaluation);
+      this.drawPieces();
+      this.showPercentages(evaluation);
+    }
+
+    if (evaluation.isSuccess) {
+      void this.completeLevel(evaluation);
+    } else if (this.cutsRemaining <= 0) {
+      void this.failLevel(evaluation);
+    } else {
+      this.showPopup(evaluation.feedback, '#ffffff');
+    }
+  }
+
+  private evaluateLevel(): LevelEvaluation | null {
+    const level = Chapters[this.currentChapterIndex].levels[this.currentLevelIndex];
     let totalPixelArea = 0;
     const areas: number[] = [];
 
     for (const piece of this.pieces) {
-      // Map region to pixel coordinates to calculate actual pixel area
       const pixelRegion = piece.region.map(p => {
         const point = this.relativeToScreen(p[0] + piece.offsetX, p[1] + piece.offsetY);
         return [point.x, point.y];
       });
-      
       const pixelArea = GeometryManager.calculateArea(pixelRegion);
       areas.push(pixelArea);
       totalPixelArea += pixelArea;
     }
 
-    if (totalPixelArea === 0) return;
+    if (totalPixelArea === 0 || areas.length === 0) return null;
 
-    // Check if pieces are roughly equal in pixel area
-    let isSuccess = false;
-    
-    // Only successful if the number of pieces matches target exactly
-    if (this.pieces.length === level.targetPieces) {
-      const targetArea = totalPixelArea / this.pieces.length;
-      isSuccess = true;
+    const targetArea = totalPixelArea / level.targetPieces;
+    const targetPercent = 100 / level.targetPieces;
+    const largestPercent = Math.max(...areas) / totalPixelArea * 100;
+    const smallestPercent = Math.min(...areas) / totalPixelArea * 100;
+    const maxDiff = Math.max(...areas.map(area => Math.abs(area - targetArea) / targetArea));
+    const isPieceCountCorrect = this.pieces.length === level.targetPieces;
+    const isSuccess = isPieceCountCorrect && maxDiff <= level.tolerance;
+    const accuracy = Math.max(0, 100 * (1 - maxDiff));
+    const grade = this.getGrade(maxDiff, level.tolerance);
+    const feedback = this.getFeedback(isPieceCountCorrect, level.targetPieces, targetPercent, largestPercent, smallestPercent);
 
-      for (const area of areas) {
-        const diff = Math.abs(area - targetArea) / targetArea;
-        if (diff > level.tolerance) { // Use dynamic tolerance based on level progression
-          isSuccess = false;
-          break;
-        }
+    return {
+      areas,
+      totalPixelArea,
+      targetArea,
+      targetPercent,
+      maxDiff,
+      largestPercent,
+      smallestPercent,
+      isPieceCountCorrect,
+      isSuccess,
+      accuracy,
+      grade,
+      feedback,
+    };
+  }
+
+  private getGrade(maxDiff: number, tolerance: number): string {
+    if (maxDiff <= tolerance * 0.25) return 'Perfect';
+    if (maxDiff <= tolerance * 0.6) return 'Great';
+    if (maxDiff <= tolerance) return 'Close';
+    return 'Cleared';
+  }
+
+  private getFeedback(
+    isPieceCountCorrect: boolean,
+    targetPieces: number,
+    targetPercent: number,
+    largestPercent: number,
+    smallestPercent: number
+  ): string {
+    if (!isPieceCountCorrect) {
+      if (this.pieces.length < targetPieces) {
+        return `Need ${targetPieces} pieces. You made ${this.pieces.length}.`;
       }
+      return `Too many pieces. Need exactly ${targetPieces}.`;
     }
 
-    const shouldShowPercentages = isSuccess || this.cutsRemaining <= 0;
+    return `Largest ${largestPercent.toFixed(1)}%, smallest ${smallestPercent.toFixed(1)}%. Target ${targetPercent.toFixed(1)}%.`;
+  }
 
-    if (shouldShowPercentages) {
-      this.percentageTexts.forEach(t => t.destroy());
-      this.percentageTexts = [];
-
-      for (let i = 0; i < this.pieces.length; i++) {
-        const piece = this.pieces[i];
-        const area = areas[i];
-        const percent = (area / totalPixelArea) * 100;
-        
-        const centroid = GeometryManager.getCentroid(piece.region);
-        const pixelCentroid = this.relativeToScreen(centroid.x + piece.offsetX, centroid.y + piece.offsetY);
-        
-        const text = this.add.text(pixelCentroid.x, pixelCentroid.y, `${percent.toFixed(1)}%`, {
-          fontSize: `${Math.max(16, this.baseScale * 0.08)}px`,
-          color: '#ffffff',
-          fontStyle: 'bold',
-          stroke: '#000000',
-          strokeThickness: 6
-        }).setOrigin(0.5);
-        
-        // Pop-in animation
-        this.tweens.add({
-          targets: text,
-          scale: { from: 0, to: 1 },
-          ease: 'Back.easeOut',
-          duration: 400,
-          delay: i * 50 // stagger effect
-        });
-        
-        this.percentageTexts.push(text);
-      }
+  private applyAreaFeedbackColors(evaluation: LevelEvaluation) {
+    for (let i = 0; i < this.pieces.length; i++) {
+      const diff = Math.abs(evaluation.areas[i] - evaluation.targetArea) / evaluation.targetArea;
+      if (diff <= 0.03) this.pieces[i].color = 0x00aa78;
+      else if (diff <= 0.1) this.pieces[i].color = 0xffaa00;
+      else this.pieces[i].color = 0xff4455;
     }
+  }
 
-    if (isSuccess) {
-      this.isLevelTransitioning = true;
-      this.currentLevelIndex++;
-      
-      let isChapterComplete = false;
-      if (this.currentLevelIndex >= Chapters[this.currentChapterIndex].levels.length) {
-        isChapterComplete = true;
-        this.currentLevelIndex = 0;
-        this.currentChapterIndex++;
-      }
+  private showPercentages(evaluation: LevelEvaluation) {
+    this.percentageTexts.forEach(t => t.destroy());
+    this.percentageTexts = [];
 
-      void playablesPlatform.saveProgress({
-        chapter: this.currentChapterIndex,
-        level: this.currentLevelIndex,
-        completed: this.currentChapterIndex >= Chapters.length
+    for (let i = 0; i < this.pieces.length; i++) {
+      const piece = this.pieces[i];
+      const percent = (evaluation.areas[i] / evaluation.totalPixelArea) * 100;
+      const centroid = GeometryManager.getCentroid(piece.region);
+      const pixelCentroid = this.relativeToScreen(centroid.x + piece.offsetX, centroid.y + piece.offsetY);
+
+      const text = this.add.text(pixelCentroid.x, pixelCentroid.y, `${percent.toFixed(1)}%`, {
+        fontSize: `${Math.max(16, this.baseScale * 0.08)}px`,
+        color: '#ffffff',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 6
+      }).setOrigin(0.5);
+
+      this.tweens.add({
+        targets: text,
+        scale: { from: 0, to: 1 },
+        ease: 'Back.easeOut',
+        duration: 400,
+        delay: i * 50
       });
 
-      if (isChapterComplete) {
-        soundManager.playWinSound();
-        if (this.currentChapterIndex >= Chapters.length) {
-          this.showPopup('Game Complete! Congratulations!', '#ffff00');
-        } else {
-          this.showPopup('Chapter Complete!', '#ffff00');
-        }
-      } else {
-        soundManager.playWinSound();
-        this.showPopup('Level Complete!', '#00ff00');
-      }
+      this.percentageTexts.push(text);
+    }
+  }
 
-      // Explode pieces outward animation
-      this.time.delayedCall(800, () => {
-        this.pieces.forEach(piece => {
-          const centroid = GeometryManager.getCentroid(piece.region);
-          this.tweens.add({
-            targets: piece,
-            offsetX: piece.offsetX + centroid.x * 1.5,
-            offsetY: piece.offsetY + centroid.y * 1.5,
-            alpha: 0,
-            scale: 0.5,
-            ease: 'Power2',
-            duration: 1000,
-            onUpdate: () => this.drawPieces()
-          });
-        });
-        
-        // Also fade out percentages
-        this.percentageTexts.forEach(t => {
-          this.tweens.add({
-            targets: t,
-            alpha: 0,
-            duration: 500
-          });
-        });
-      });
-      
-      this.time.delayedCall(2000, () => {
-        this.initLevel();
-      });
-    } else if (this.cutsRemaining <= 0) {
-      soundManager.playLoseSound();
-      this.isLevelTransitioning = true;
-      this.showPopup('Out of cuts! Restarting...', '#ff0000');
-      
-      this.time.delayedCall(2000, () => {
-        this.initLevel();
-      });
+  private async completeLevel(evaluation: LevelEvaluation) {
+    const completedChapterIndex = this.currentChapterIndex;
+    const completedLevelIndex = this.currentLevelIndex;
+    const nextProgress = this.getNextProgress(completedChapterIndex, completedLevelIndex);
+    const saveProgress = this.shouldAdvanceSavedProgress(nextProgress) ? nextProgress : undefined;
+
+    this.isLevelTransitioning = true;
+    this.currentChapterIndex = nextProgress.chapter;
+    this.currentLevelIndex = nextProgress.level;
+
+    await playablesPlatform.saveLevelResult(
+      completedChapterIndex,
+      completedLevelIndex,
+      evaluation.accuracy,
+      evaluation.grade,
+      this.cutsUsedThisLevel,
+      saveProgress
+    );
+
+    soundManager.playWinSound();
+    this.lightImpact(40);
+    if (nextProgress.completed) {
+      this.showPopup(`Game Complete! ${evaluation.grade} ${evaluation.accuracy.toFixed(1)}%`, '#ffff00');
+    } else if (this.currentLevelIndex === 0 && this.currentChapterIndex !== completedChapterIndex) {
+      this.showPopup(`Chapter Complete! ${evaluation.grade} ${evaluation.accuracy.toFixed(1)}%`, '#ffff00');
     } else {
-      this.showPopup(`Keep slicing...`, '#ffffff');
+      this.showPopup(`${evaluation.grade}! ${evaluation.accuracy.toFixed(1)}% accuracy`, '#00ff00');
     }
+
+    this.time.delayedCall(800, () => {
+      this.pieces.forEach(piece => {
+        const centroid = GeometryManager.getCentroid(piece.region);
+        this.tweens.add({
+          targets: piece,
+          offsetX: piece.offsetX + centroid.x * 1.5,
+          offsetY: piece.offsetY + centroid.y * 1.5,
+          alpha: 0,
+          scale: 0.5,
+          ease: 'Power2',
+          duration: 1000,
+          onUpdate: () => this.drawPieces()
+        });
+      });
+
+      this.percentageTexts.forEach(t => {
+        this.tweens.add({
+          targets: t,
+          alpha: 0,
+          duration: 500
+        });
+      });
+    });
+
+    this.time.delayedCall(2200, () => {
+      if (nextProgress.completed) {
+        this.scene.start('MenuScene');
+      } else {
+        this.initLevel();
+      }
+    });
+  }
+
+  private async failLevel(evaluation: LevelEvaluation) {
+    soundManager.playLoseSound();
+    this.lightImpact(90);
+    this.isLevelTransitioning = true;
+    playablesPlatform.trackEvent('level_fail');
+    await playablesPlatform.saveAnalytics();
+    this.showPopup(`Try again: ${evaluation.feedback}`, '#ff4455');
+
+    this.time.delayedCall(2600, () => {
+      this.initLevel();
+    });
+  }
+
+  private getNextProgress(chapterIndex: number, levelIndex: number) {
+    let chapter = chapterIndex;
+    let level = levelIndex + 1;
+    let completed = false;
+
+    if (level >= Chapters[chapter].levels.length) {
+      chapter++;
+      level = 0;
+    }
+
+    if (chapter >= Chapters.length) {
+      chapter = Chapters.length - 1;
+      level = Chapters[chapter].levels.length - 1;
+      completed = true;
+    }
+
+    return { chapter, level, completed };
+  }
+
+  private shouldAdvanceSavedProgress(nextProgress: { chapter: number; level: number; completed: boolean }): boolean {
+    const progress = playablesPlatform.getProgress();
+    if (nextProgress.completed) return true;
+    if (progress.completed) return false;
+    return this.getGlobalIndex(nextProgress.chapter, nextProgress.level) > this.getGlobalIndex(progress.chapter, progress.level);
+  }
+
+  private getGlobalIndex(chapterIndex: number, levelIndex: number): number {
+    let index = 0;
+    for (let i = 0; i < chapterIndex; i++) index += Chapters[i].levels.length;
+    return index + levelIndex;
   }
 }

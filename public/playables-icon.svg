@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Geometry Slicer icon">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#10131c"/>
+      <stop offset="1" stop-color="#1f345e"/>
+    </linearGradient>
+    <linearGradient id="shape" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#62d2ff"/>
+      <stop offset="1" stop-color="#4488ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="190" fill="url(#bg)"/>
+  <path d="M170 260h684v504H170z" fill="#16243d" opacity=".82"/>
+  <path d="M512 120v784M120 512h784" stroke="#ffffff" stroke-opacity=".14" stroke-width="20"/>
+  <path d="M520 168 820 510 520 856 204 706 258 312z" fill="url(#shape)" stroke="#fff" stroke-width="26" stroke-linejoin="round"/>
+  <path d="M186 820 838 194" stroke="#00ff99" stroke-width="44" stroke-linecap="round"/>
+  <circle cx="512" cy="512" r="38" fill="#fff"/>
+  <circle cx="512" cy="512" r="18" fill="#10131c"/>
+</svg>
