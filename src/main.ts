@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 import { MainScene } from './scenes/MainScene';
 import { MenuScene } from './scenes/MenuScene';
 
-const config: Phaser.Types.Core.GameConfig = {
+const config = {
   type: Phaser.AUTO,
   parent: 'game-container',
   backgroundColor: '#1a1a1a',
@@ -13,6 +13,11 @@ const config: Phaser.Types.Core.GameConfig = {
     width: '100%',
     height: '100%'
   },
+  // @ts-ignore
+  resolution: window.devicePixelRatio || 1, // Fix blurry text/graphics on Retina displays
+  // @ts-ignore
+  autoDensity: true,
+  antialias: true, // Ensure smooth lines
   scene: [MenuScene, MainScene]
 };
 
