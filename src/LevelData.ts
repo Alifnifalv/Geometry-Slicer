@@ -69,14 +69,16 @@ const lShape = [
   [-0.3, -0.4], [-0.1, -0.4], [-0.1, 0.2], [0.3, 0.2], [0.3, 0.4], [-0.3, 0.4]
 ];
 
-// Helper for Sawblade
+// Helper for Sawblade (Forced Even Symmetry)
 function generateSawblade(points: number, outer: number = 0.45, inner: number = 0.35, skew: number = 0.15): number[][] {
+  // Ensure points is even so opposite peaks/valleys align exactly
+  const evenPoints = points % 2 !== 0 ? points + 1 : points;
   const shape: number[][] = [];
-  const angleStep = Math.PI / points;
-  for (let i = 0; i < points * 2; i++) {
+  const angleStep = Math.PI / evenPoints;
+  for (let i = 0; i < evenPoints * 2; i++) {
     const isOuter = i % 2 === 0;
     const radius = isOuter ? outer : inner;
-    const angleOffset = isOuter ? skew : 0; 
+    const angleOffset = isOuter ? skew : -skew; 
     const angle = i * angleStep - Math.PI / 2 + angleOffset;
     shape.push([
       Math.cos(angle) * radius,
@@ -99,17 +101,42 @@ function generateCross(thickness: number = 0.2, length: number = 0.4): number[][
   ];
 }
 
-// Helper for Asymmetrical Gear
-function generateAsymmetricalGear(teeth: number, outer: number = 0.4, inner: number = 0.2): number[][] {
+// Logic-Based Composite Block Shape (Tetris Style)
+function generateCompositeBlock(): number[][] {
+  // A shape made of two blocks: e.g. a 0.2x0.6 box and a 0.6x0.2 box
+  // Cutting exactly diagonally across the junction perfectly halves it
+  return [
+    [-0.3, -0.4], [0.1, -0.4],
+    [0.1, -0.1], [0.4, -0.1],
+    [0.4, 0.3], [-0.1, 0.3],
+    [-0.1, 0.0], [-0.3, 0.0]
+  ];
+}
+
+// Logic-Based Point Symmetric Gear
+// This gear is highly chaotic on the outside, but it perfectly mirrors across the center point.
+// Any cut exactly through the center dot will perfectly halve the area.
+function generatePointSymmetricGear(teeth: number, outer: number = 0.45, inner: number = 0.15): number[][] {
   const shape: number[][] = [];
-  const angleStep = Math.PI / (teeth * 2);
-  for (let i = 0; i < teeth * 4; i++) {
-    const noise = (Math.sin(i * 1.5) * 0.05);
-    const radius = Math.floor(i / 2) % 2 === 0 ? (outer + noise) : (inner + noise);
+  // Ensure an even number of teeth for perfect point symmetry
+  const evenTeeth = teeth % 2 !== 0 ? teeth + 1 : teeth;
+  const angleStep = Math.PI / (evenTeeth * 2);
+  
+  // Create exactly half the gear with chaotic lengths
+  const halfRadii: number[] = [];
+  for (let i = 0; i < evenTeeth * 2; i++) {
+    const chaoticFactor = (i % 3 === 0) ? 1.0 : (i % 2 === 0 ? 0.6 : 0.3);
+    halfRadii.push(inner + (outer - inner) * chaoticFactor);
+  }
+  
+  // Mirror the radii to the second half to guarantee perfect point symmetry
+  const fullRadii = [...halfRadii, ...halfRadii];
+  
+  for (let i = 0; i < evenTeeth * 4; i++) {
     const angle = i * angleStep;
     shape.push([
-      Math.cos(angle) * radius,
-      Math.sin(angle) * radius
+      Math.cos(angle) * fullRadii[i],
+      Math.sin(angle) * fullRadii[i]
     ]);
   }
   return shape;
@@ -206,19 +233,21 @@ for (let i = 0; i < 10; i++) {
   }
 }
 
-// Generate 10 levels for Chapter 6 (Asymmetry)
+// Generate 10 levels for Chapter 6 (Asymmetry) -> Now "Composite Logic"
 const chapter6Levels: LevelConfig[] = [];
 for (let i = 0; i < 10; i++) {
   const tol = getTolerance(50 + i);
   const maxCuts = 4;
   const target = 8;
   if (i % 2 === 0) {
-    chapter6Levels.push({ shape: generateAsymmetricalGear(8 + i, 0.45, 0.25), targetPieces: target, maxCuts, tolerance: tol });
+    chapter6Levels.push({ shape: generateCompositeBlock(), targetPieces: target, maxCuts, tolerance: tol });
   } else {
-    // A lopsided polygon
-    const poly = generatePolygon(6 + i);
-    poly[0][1] -= 0.1; 
-    chapter6Levels.push({ shape: poly, targetPieces: target, maxCuts, tolerance: tol });
+    // S-shape blocks
+    const sShape = [
+      [-0.4, -0.4], [0.1, -0.4], [0.1, -0.1], [0.4, -0.1],
+      [0.4, 0.4], [-0.1, 0.4], [-0.1, 0.1], [-0.4, 0.1]
+    ];
+    chapter6Levels.push({ shape: sShape, targetPieces: target, maxCuts, tolerance: tol });
   }
 }
 
@@ -249,9 +278,9 @@ for (let i = 0; i < 10; i++) {
   const target = i < 5 ? 10 : 12;
   const generators = [
     () => generateSawblade(12, 0.45, 0.2, 0.2),
-    () => generateCross(0.1, 0.45),
-    () => generateAsymmetricalGear(10, 0.45, 0.2),
-    () => generateStar(15, 0.45, 0.15)
+    () => generatePointSymmetricGear(10, 0.45, 0.2),
+    () => generateCompositeBlock(),
+    () => generateStar(14, 0.45, 0.15)
   ];
   chapter9Levels.push({ shape: generators[i % generators.length](), targetPieces: target, maxCuts, tolerance: tol });
 }
@@ -263,12 +292,12 @@ for (let i = 0; i < 10; i++) {
   const maxCuts = 6;
   const target = 12;
   if (i === 9) {
-    // Final Boss
-    chapter10Levels.push({ shape: generateAsymmetricalGear(20, 0.45, 0.1), targetPieces: target, maxCuts, tolerance: tol });
+    // Final Boss: Highly chaotic but mathematically point-symmetric
+    chapter10Levels.push({ shape: generatePointSymmetricGear(20, 0.45, 0.1), targetPieces: target, maxCuts, tolerance: tol });
   } else if (i % 2 === 0) {
-    chapter10Levels.push({ shape: generateSawblade(16, 0.45, 0.25, 0.1), targetPieces: target, maxCuts, tolerance: tol });
+    chapter10Levels.push({ shape: generatePointSymmetricGear(16, 0.45, 0.25), targetPieces: target, maxCuts, tolerance: tol });
   } else {
-    chapter10Levels.push({ shape: generateCross(0.05, 0.45), targetPieces: target, maxCuts, tolerance: tol });
+    chapter10Levels.push({ shape: generateSawblade(16, 0.45, 0.2, 0.25), targetPieces: target, maxCuts, tolerance: tol });
   }
 }
 

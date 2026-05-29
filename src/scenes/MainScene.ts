@@ -58,7 +58,7 @@ export class MainScene extends Phaser.Scene {
 
   create() {
     // Subtle background grid
-    this.bgGrid = this.add.grid(0, 0, 800, 800, 40, 40, 0x1a1a1a, 1, 0x333333, 0.5).setOrigin(0, 0);
+    this.bgGrid = this.add.grid(0, 0, 800, 800, 40, 40, 0x1a1a1a, 1, 0x333333, 0.5).setOrigin(0.5);
 
     this.graphics = this.add.graphics();
     this.uiGraphics = this.add.graphics();
@@ -72,12 +72,13 @@ export class MainScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     this.uiTextBg = this.add.graphics();
-    this.uiText = this.add.text(20, 20, '', {
+    this.uiText = this.add.text(0, 0, '', {
       fontSize: '18px',
       color: '#ffffff',
       fontStyle: 'bold',
-      lineSpacing: 4
-    });
+      lineSpacing: 4,
+      align: 'center'
+    }).setOrigin(0.5);
 
     this.createButtons();
 
@@ -175,8 +176,9 @@ export class MainScene extends Phaser.Scene {
 
     this.centerX = width / 2;
     this.centerY = height / 2;
-    // Scale grid
-    this.bgGrid.setDisplaySize(width, height);
+    // Scale and perfectly center grid
+    this.bgGrid.setPosition(this.centerX, this.centerY);
+    this.bgGrid.setDisplaySize(width + 80, height + 80);
     
     // Keep a larger margin for mobile finger space (scale to 70%)
     this.baseScale = Math.min(width, height) * 0.7;
@@ -190,8 +192,9 @@ export class MainScene extends Phaser.Scene {
     this.drawPopupBg();
 
     this.uiText.setFontSize(Math.max(12, this.baseScale * 0.05));
-    // Position HUD centered at bottom
-    this.uiText.setPosition(this.centerX - this.uiText.width / 2, height * 0.88); 
+    this.uiText.setWordWrapWidth(width * 0.9);
+    // Position HUD anchored 50px from the bottom edge
+    this.uiText.setPosition(this.centerX, height - (this.uiText.height / 2) - 30); 
     this.updateHUD(); // force bg redraw
 
     this.btnMenu.setPosition(60, 40);
@@ -370,6 +373,14 @@ export class MainScene extends Phaser.Scene {
         this.graphics.strokePath();
       }
     }
+
+    // Draw a prominent center reference anchor point to help with logical cuts
+    this.graphics.fillStyle(0xffffff, 0.8);
+    this.graphics.lineStyle(2, 0x000000, 1);
+    this.graphics.beginPath();
+    this.graphics.arc(this.centerX, this.centerY, Math.max(3, this.baseScale * 0.01), 0, Math.PI * 2);
+    this.graphics.fillPath();
+    this.graphics.strokePath();
   }
 
   private drawUI() {
