@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/geometry-slicer/' : '/',
+  base: command === 'build' ? '/Geometry-Slicer/' : '/',
 }));
