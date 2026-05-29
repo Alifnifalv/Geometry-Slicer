@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GeometryManager } from '../GeometryManager';
 import { Chapters } from '../LevelData';
 import { playablesPlatform } from '../playables';
+import { soundManager } from '../SoundManager';
 
 interface ShapePiece {
   region: number[][]; // Polygon vertices in relative world space (e.g., -0.5 to 0.5)
@@ -101,8 +102,12 @@ export class MainScene extends Phaser.Scene {
 
     const menu = createBtn('MENU', 0x333333);
     this.btnMenu = menu.container;
-    menu.zone.on('pointerdown', () => this.btnMenu.setScale(0.9));
+    menu.zone.on('pointerdown', () => {
+      soundManager.init();
+      this.btnMenu.setScale(0.9);
+    });
     menu.zone.on('pointerup', () => {
+      soundManager.playClickSound();
       this.btnMenu.setScale(1);
       this.scene.start('MenuScene');
     });
@@ -110,8 +115,12 @@ export class MainScene extends Phaser.Scene {
 
     const restart = createBtn('RESTART', 0xffaa00);
     this.btnRestart = restart.container;
-    restart.zone.on('pointerdown', () => this.btnRestart.setScale(0.9));
+    restart.zone.on('pointerdown', () => {
+      soundManager.init();
+      this.btnRestart.setScale(0.9);
+    });
     restart.zone.on('pointerup', () => {
+      soundManager.playClickSound();
       this.btnRestart.setScale(1);
       this.initLevel();
     });
@@ -269,6 +278,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer) {
+    soundManager.init();
     if (this.isLevelTransitioning) return;
     if (this.cutsRemaining <= 0) return;
     if (this.pieces.length >= 20) return; // limit slices for performance
@@ -297,6 +307,8 @@ export class MainScene extends Phaser.Scene {
 
     const wasCut = this.sliceShapes();
     if (wasCut) {
+      soundManager.playSliceSound();
+      this.cameras.main.shake(150, 0.005);
       this.cutsRemaining--;
       this.updateHUD();
       this.checkWinCondition();
@@ -531,12 +543,14 @@ export class MainScene extends Phaser.Scene {
       });
 
       if (isChapterComplete) {
+        soundManager.playWinSound();
         if (this.currentChapterIndex >= Chapters.length) {
           this.showPopup('Game Complete! Congratulations!', '#ffff00');
         } else {
           this.showPopup('Chapter Complete!', '#ffff00');
         }
       } else {
+        soundManager.playWinSound();
         this.showPopup('Level Complete!', '#00ff00');
       }
 
@@ -570,6 +584,7 @@ export class MainScene extends Phaser.Scene {
         this.initLevel();
       });
     } else if (this.cutsRemaining <= 0) {
+      soundManager.playLoseSound();
       this.isLevelTransitioning = true;
       this.showPopup('Out of cuts! Restarting...', '#ff0000');
       

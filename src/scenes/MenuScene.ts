@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { playablesPlatform } from '../playables';
+import { soundManager } from '../SoundManager';
 
 export class MenuScene extends Phaser.Scene {
   private titleText!: Phaser.GameObjects.Text;
@@ -50,8 +51,12 @@ export class MenuScene extends Phaser.Scene {
     const zone = this.add.zone(0, 0, 200, 80).setOrigin(0.5).setInteractive({ useHandCursor: true });
     this.playButton.add(zone);
 
-    zone.on('pointerdown', () => this.playButton.setScale(0.95));
+    zone.on('pointerdown', () => {
+      soundManager.init();
+      this.playButton.setScale(0.95);
+    });
     zone.on('pointerup', () => {
+      soundManager.playClickSound();
       this.playButton.setScale(1);
       this.scene.start('MainScene');
     });
@@ -70,8 +75,12 @@ export class MenuScene extends Phaser.Scene {
       const newZone = this.add.zone(0, 0, 200, 60).setOrigin(0.5).setInteractive({ useHandCursor: true });
       this.newGameButton.add(newZone);
 
-      newZone.on('pointerdown', () => this.newGameButton!.setScale(0.95));
+      newZone.on('pointerdown', () => {
+        soundManager.init();
+        this.newGameButton!.setScale(0.95);
+      });
       newZone.on('pointerup', () => {
+        soundManager.playClickSound();
         this.newGameButton!.setScale(1);
         void playablesPlatform.resetProgress();
         this.scene.start('MainScene');
