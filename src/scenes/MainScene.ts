@@ -116,6 +116,10 @@ export class MainScene extends Phaser.Scene {
     this.currentLevelIndex = this.clampLevelIndex(this.currentChapterIndex, data.level ?? progress.level);
   }
 
+  private px(value: number): number {
+    return value * Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
+  }
+
   private clampChapterIndex(chapterIndex: number): number {
     if (Chapters.length === 0) return 0;
     return Phaser.Math.Clamp(Math.floor(chapterIndex), 0, Chapters.length - 1);
@@ -167,14 +171,17 @@ export class MainScene extends Phaser.Scene {
   private createButtons() {
     // Helper for polished buttons
     const createBtn = (text: string, color: number) => {
+      const width = this.px(100);
+      const height = this.px(40);
+      const radius = this.px(20);
       const container = this.add.container(0, 0);
       // Drop shadow
-      const shadow = this.add.graphics().fillStyle(0x000000, 0.4).fillRoundedRect(-48, -18, 96, 36, 18);
-      const bg = this.add.graphics().fillStyle(color, 1).fillRoundedRect(-50, -20, 100, 40, 20);
-      bg.lineStyle(2, 0xffffff, 0.3).strokeRoundedRect(-50, -20, 100, 40, 20);
-      const txt = this.add.text(0, 0, text, { fontSize: '14px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+      const shadow = this.add.graphics().fillStyle(0x000000, 0.4).fillRoundedRect(-width / 2 + this.px(2), -height / 2 + this.px(2), width - this.px(4), height - this.px(4), radius - this.px(2));
+      const bg = this.add.graphics().fillStyle(color, 1).fillRoundedRect(-width / 2, -height / 2, width, height, radius);
+      bg.lineStyle(this.px(2), 0xffffff, 0.3).strokeRoundedRect(-width / 2, -height / 2, width, height, radius);
+      const txt = this.add.text(0, 0, text, { fontSize: `${this.px(14)}px`, color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
       container.add([shadow, bg, txt]);
-      const zone = this.add.zone(0, 0, 100, 40).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      const zone = this.add.zone(0, 0, width, height).setOrigin(0.5).setInteractive({ useHandCursor: true });
       container.add(zone);
       return { container, zone };
     };
@@ -329,9 +336,9 @@ export class MainScene extends Phaser.Scene {
       this.uiTextBg.clear();
       const bounds = this.uiText.getBounds();
       this.uiTextBg.fillStyle(0x000000, 0.7);
-      this.uiTextBg.fillRoundedRect(bounds.x - 15, bounds.y - 10, bounds.width + 30, bounds.height + 20, 16);
-      this.uiTextBg.lineStyle(2, 0xffffff, 0.2);
-      this.uiTextBg.strokeRoundedRect(bounds.x - 15, bounds.y - 10, bounds.width + 30, bounds.height + 20, 16);
+      this.uiTextBg.fillRoundedRect(bounds.x - this.px(15), bounds.y - this.px(10), bounds.width + this.px(30), bounds.height + this.px(20), this.px(16));
+      this.uiTextBg.lineStyle(this.px(2), 0xffffff, 0.2);
+      this.uiTextBg.strokeRoundedRect(bounds.x - this.px(15), bounds.y - this.px(10), bounds.width + this.px(30), bounds.height + this.px(20), this.px(16));
     });
   }
 
@@ -362,8 +369,8 @@ export class MainScene extends Phaser.Scene {
     this.uiText.setPosition(this.centerX, height - (this.uiText.height / 2) - 30); 
     this.updateHUD(); // force bg redraw
 
-    this.btnMenu.setPosition(60, 40);
-    this.btnRestart.setPosition(width - 60, 40);
+    this.btnMenu.setPosition(this.px(60), this.px(40));
+    this.btnRestart.setPosition(width - this.px(60), this.px(40));
 
     // Redraw pieces with the new scale
     this.drawPieces();
@@ -393,8 +400,8 @@ export class MainScene extends Phaser.Scene {
     if (!this.messageText.text) return;
     
     const bounds = this.messageText.getBounds();
-    const padX = 20;
-    const padY = 10;
+    const padX = this.px(20);
+    const padY = this.px(10);
     
     this.popupBg.fillStyle(0x000000, 0.8);
     this.popupBg.fillRoundedRect(
@@ -402,18 +409,18 @@ export class MainScene extends Phaser.Scene {
       bounds.y - padY, 
       bounds.width + padX * 2, 
       bounds.height + padY * 2, 
-      16
+      this.px(16)
     );
     const messageColor = typeof this.messageText.style.color === 'string'
       ? this.messageText.style.color
       : '#ffffff';
-    this.popupBg.lineStyle(3, Phaser.Display.Color.HexStringToColor(messageColor).color, 0.8);
+    this.popupBg.lineStyle(this.px(3), Phaser.Display.Color.HexStringToColor(messageColor).color, 0.8);
     this.popupBg.strokeRoundedRect(
       bounds.x - padX, 
       bounds.y - padY, 
       bounds.width + padX * 2, 
       bounds.height + padY * 2, 
-      16
+      this.px(16)
     );
   }
 

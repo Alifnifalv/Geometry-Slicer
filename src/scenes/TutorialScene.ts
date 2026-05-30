@@ -36,6 +36,10 @@ export class TutorialScene extends Phaser.Scene {
     super('TutorialScene');
   }
 
+  private px(value: number): number {
+    return value * Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
+  }
+
   create() {
     this.bg = this.add.graphics();
     this.shape = this.add.graphics();
@@ -127,16 +131,16 @@ export class TutorialScene extends Phaser.Scene {
     for (let x = 0; x <= width; x += 40) this.bg.lineBetween(x, 0, x, height);
     for (let y = 0; y <= height; y += 40) this.bg.lineBetween(0, y, width, y);
 
-    this.titleText.setFontSize(Math.max(24, this.baseScale * 0.05));
+    this.titleText.setFontSize(Math.max(this.px(24), this.baseScale * 0.05));
     this.titleText.setPosition(this.centerX, height * 0.12);
-    this.bodyText.setFontSize(Math.max(16, this.baseScale * 0.03));
+    this.bodyText.setFontSize(Math.max(this.px(16), this.baseScale * 0.03));
     this.bodyText.setWordWrapWidth(width * 0.8);
     this.bodyText.setPosition(this.centerX, height * 0.80);
-    this.progressText.setFontSize(Math.max(14, this.baseScale * 0.025));
+    this.progressText.setFontSize(Math.max(this.px(14), this.baseScale * 0.025));
     this.progressText.setPosition(this.centerX, height * 0.90);
     this.button.setPosition(this.centerX, height * 0.68);
-    this.skipText.setFontSize(Math.max(14, this.baseScale * 0.025));
-    this.skipText.setPosition(width - 50, 34);
+    this.skipText.setFontSize(Math.max(this.px(14), this.baseScale * 0.025));
+    this.skipText.setPosition(width - this.px(50), this.px(34));
 
     this.drawButton();
     this.drawExample();
@@ -153,8 +157,8 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   private drawButton() {
-    const btnW = Math.max(220, this.baseScale * 0.25);
-    const btnH = Math.max(72, this.baseScale * 0.08);
+    const btnW = Math.max(this.px(220), this.baseScale * 0.25);
+    const btnH = Math.max(this.px(72), this.baseScale * 0.08);
     const radius = btnH * 0.25;
 
     this.buttonBg.clear();
@@ -163,7 +167,7 @@ export class TutorialScene extends Phaser.Scene {
     this.buttonBg.lineStyle(Math.max(2, this.baseScale * 0.004), 0xffffff, 0.28);
     this.buttonBg.strokeRoundedRect(-btnW/2, -btnH/2, btnW, btnH, radius);
     
-    this.buttonText.setFontSize(Math.max(20, this.baseScale * 0.035));
+    this.buttonText.setFontSize(Math.max(this.px(20), this.baseScale * 0.035));
     
     // Update hit area
     const zone = this.button.list.find(child => child.type === 'Zone') as Phaser.GameObjects.Zone;
@@ -173,7 +177,7 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   private drawExample() {
-    const radius = Math.min(250, this.baseScale * 0.18);
+    const radius = Math.min(this.px(250), this.baseScale * 0.18);
     const cy = this.scale.gameSize.height * 0.40;
 
     this.shape.clear();

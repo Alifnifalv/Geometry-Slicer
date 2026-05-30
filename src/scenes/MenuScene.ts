@@ -106,6 +106,10 @@ export class MenuScene extends Phaser.Scene {
     playablesPlatform.notifyGameReady();
   }
 
+  private px(value: number): number {
+    return value * Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
+  }
+
   update() {
     this.rotationAngle += 0.004;
     this.drawBackground();
@@ -115,11 +119,11 @@ export class MenuScene extends Phaser.Scene {
     const container = this.add.container(0, 0);
     const bg = this.add.graphics();
     const text = this.add.text(0, 0, label, {
-      fontSize: '18px',
+      fontSize: `${this.px(18)}px`,
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
-    const zone = this.add.zone(0, 0, width, height).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    const zone = this.add.zone(0, 0, this.px(width), this.px(height)).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
     container.add([bg, text, zone]);
     zone.on('pointerdown', () => {
@@ -137,11 +141,13 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private drawButton(bg: Phaser.GameObjects.Graphics, color: number, width: number, height: number, selected = false) {
+    const scaledWidth = this.px(width);
+    const scaledHeight = this.px(height);
     bg.clear();
     bg.fillStyle(color, selected ? 1 : 0.92);
-    bg.fillRoundedRect(-width / 2, -height / 2, width, height, 16);
-    bg.lineStyle(selected ? 4 : 2, selected ? 0x00ff99 : 0xffffff, selected ? 0.9 : 0.22);
-    bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 16);
+    bg.fillRoundedRect(-scaledWidth / 2, -scaledHeight / 2, scaledWidth, scaledHeight, this.px(16));
+    bg.lineStyle(this.px(selected ? 4 : 2), selected ? 0x00ff99 : 0xffffff, selected ? 0.9 : 0.22);
+    bg.strokeRoundedRect(-scaledWidth / 2, -scaledHeight / 2, scaledWidth, scaledHeight, this.px(16));
   }
 
   private renderMenu() {
@@ -176,8 +182,8 @@ export class MenuScene extends Phaser.Scene {
     const chapter = Chapters[this.selectedChapterIndex];
     const width = this.scale.width;
     const height = this.scale.height;
-    const cellSize = Math.min(58, Math.max(42, Math.min(width, height) * 0.09));
-    const gap = Math.max(8, cellSize * 0.25);
+    const cellSize = Math.min(this.px(58), Math.max(this.px(42), Math.min(width, height) * 0.09));
+    const gap = Math.max(this.px(8), cellSize * 0.25);
     const columns = 5;
     const totalWidth = columns * cellSize + (columns - 1) * gap;
     const startX = width / 2 - totalWidth / 2 + cellSize / 2;
@@ -195,9 +201,9 @@ export class MenuScene extends Phaser.Scene {
       const bg = this.add.graphics();
       const color = unlocked ? this.getGradeColor(score?.bestGrade) : 0x273044;
       bg.fillStyle(color, unlocked ? 0.95 : 0.35);
-      bg.fillRoundedRect(-cellSize / 2, -cellSize / 2, cellSize, cellSize, 14);
-      bg.lineStyle(selected ? 4 : 2, selected ? 0xffffff : 0x7f8ba3, selected ? 0.95 : 0.35);
-      bg.strokeRoundedRect(-cellSize / 2, -cellSize / 2, cellSize, cellSize, 14);
+      bg.fillRoundedRect(-cellSize / 2, -cellSize / 2, cellSize, cellSize, this.px(14));
+      bg.lineStyle(this.px(selected ? 4 : 2), selected ? 0xffffff : 0x7f8ba3, selected ? 0.95 : 0.35);
+      bg.strokeRoundedRect(-cellSize / 2, -cellSize / 2, cellSize, cellSize, this.px(14));
 
       const number = this.add.text(0, -3, `${levelIndex + 1}`, {
         fontSize: `${Math.max(17, cellSize * 0.36)}px`,
@@ -314,25 +320,25 @@ export class MenuScene extends Phaser.Scene {
     const baseScale = Math.min(width, height);
 
     this.drawBackground();
-    this.titleText.setFontSize(Math.max(26, baseScale * 0.075));
+    this.titleText.setFontSize(Math.max(this.px(26), baseScale * 0.075));
     this.titleText.setPosition(cx, height * 0.12);
-    this.subtitleText.setFontSize(Math.max(12, baseScale * 0.026));
+    this.subtitleText.setFontSize(Math.max(this.px(12), baseScale * 0.026));
     this.subtitleText.setPosition(cx, height * 0.19);
-    this.statsText.setFontSize(Math.max(12, baseScale * 0.026));
+    this.statsText.setFontSize(Math.max(this.px(12), baseScale * 0.026));
     this.statsText.setPosition(cx, height * 0.25);
-    this.chapterText.setFontSize(Math.max(18, baseScale * 0.045));
+    this.chapterText.setFontSize(Math.max(this.px(18), baseScale * 0.045));
     this.chapterText.setPosition(cx, height * 0.34);
-    this.selectedText.setFontSize(Math.max(13, baseScale * 0.028));
+    this.selectedText.setFontSize(Math.max(this.px(13), baseScale * 0.028));
     this.selectedText.setPosition(cx, height * 0.40);
-    this.hintText.setFontSize(Math.max(11, baseScale * 0.022));
+    this.hintText.setFontSize(Math.max(this.px(11), baseScale * 0.022));
     this.hintText.setWordWrapWidth(width * 0.84);
     this.hintText.setPosition(cx, height * 0.91);
 
-    this.prevButton.container.setPosition(Math.max(42, width * 0.14), height * 0.34);
-    this.nextButton.container.setPosition(Math.min(width - 42, width * 0.86), height * 0.34);
+    this.prevButton.container.setPosition(Math.max(this.px(42), width * 0.14), height * 0.34);
+    this.nextButton.container.setPosition(Math.min(width - this.px(42), width * 0.86), height * 0.34);
     this.playButton.container.setPosition(cx, height * 0.72);
-    this.tutorialButton.container.setPosition(cx - Math.min(120, width * 0.23), height * 0.82);
-    this.newGameButton.container.setPosition(cx + Math.min(120, width * 0.23), height * 0.82);
+    this.tutorialButton.container.setPosition(cx - Math.min(this.px(120), width * 0.23), height * 0.82);
+    this.newGameButton.container.setPosition(cx + Math.min(this.px(120), width * 0.23), height * 0.82);
 
     this.drawButton(this.playButton.bg, 0x4488ff, 210, 68);
     this.drawButton(this.tutorialButton.bg, 0x2f3a52, 190, 52);
@@ -340,11 +346,11 @@ export class MenuScene extends Phaser.Scene {
     this.drawButton(this.prevButton.bg, 0x24304d, 66, 54);
     this.drawButton(this.nextButton.bg, 0x24304d, 66, 54);
 
-    this.playButton.text.setFontSize(Math.max(18, baseScale * 0.038));
-    this.tutorialButton.text.setFontSize(Math.max(13, baseScale * 0.026));
-    this.newGameButton.text.setFontSize(Math.max(13, baseScale * 0.026));
-    this.prevButton.text.setFontSize(Math.max(22, baseScale * 0.045));
-    this.nextButton.text.setFontSize(Math.max(22, baseScale * 0.045));
+    this.playButton.text.setFontSize(Math.max(this.px(18), baseScale * 0.038));
+    this.tutorialButton.text.setFontSize(Math.max(this.px(13), baseScale * 0.026));
+    this.newGameButton.text.setFontSize(Math.max(this.px(13), baseScale * 0.026));
+    this.prevButton.text.setFontSize(Math.max(this.px(22), baseScale * 0.045));
+    this.nextButton.text.setFontSize(Math.max(this.px(22), baseScale * 0.045));
     this.renderLevelButtons();
   }
 }
