@@ -34,6 +34,6 @@ Chapters.forEach((chapter, row) => {
 
 svg += `</svg>`;
 
-const outPath = path.resolve(process.cwd(), 'level_map.svg');
+const outPath = path.resolve(process.cwd(), 'level_map_v3.svg');
 fs.writeFileSync(outPath, svg);
 console.log('Saved to', outPath);
