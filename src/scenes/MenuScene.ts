@@ -57,26 +57,26 @@ export class MenuScene extends Phaser.Scene {
       fontStyle: 'italic',
     }).setOrigin(0.5);
 
-    this.statsText = this.add.text(0, 0, '', {
+    this.statsText = this.add.text(0, 0, ' ', {
       fontSize: '15px',
       color: '#9fb8dd',
       align: 'center',
     }).setOrigin(0.5);
 
-    this.chapterText = this.add.text(0, 0, '', {
+    this.chapterText = this.add.text(0, 0, ' ', {
       fontSize: '24px',
       color: '#ffffff',
       fontStyle: 'bold',
       align: 'center',
     }).setOrigin(0.5);
 
-    this.selectedText = this.add.text(0, 0, '', {
+    this.selectedText = this.add.text(0, 0, ' ', {
       fontSize: '16px',
       color: '#d8e4ff',
       align: 'center',
     }).setOrigin(0.5);
 
-    this.hintText = this.add.text(0, 0, '', {
+    this.hintText = this.add.text(0, 0, ' ', {
       fontSize: '13px',
       color: '#92a4bd',
       align: 'center',

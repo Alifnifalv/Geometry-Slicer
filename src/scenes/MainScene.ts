@@ -142,7 +142,7 @@ export class MainScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     this.uiTextBg = this.add.graphics();
-    this.uiText = this.add.text(0, 0, '', {
+    this.uiText = this.add.text(0, 0, ' ', {
       fontSize: '18px',
       color: '#ffffff',
       fontStyle: 'bold',
@@ -788,8 +788,12 @@ export class MainScene extends Phaser.Scene {
       saveProgress
     );
 
-    soundManager.playWinSound();
-    this.lightImpact(40);
+    try {
+      soundManager.playWinSound();
+      this.lightImpact(40);
+    } catch (e) {
+      console.warn('Win effects failed', e);
+    }
     if (nextProgress.completed) {
       this.showPopup(`Game Complete! ${evaluation.grade} ${evaluation.accuracy.toFixed(1)}%`, '#ffff00');
     } else if (this.currentLevelIndex === 0 && this.currentChapterIndex !== completedChapterIndex) {
@@ -834,8 +838,12 @@ export class MainScene extends Phaser.Scene {
   }
 
   private async failLevel(evaluation: LevelEvaluation) {
-    soundManager.playLoseSound();
-    this.lightImpact(90);
+    try {
+      soundManager.playLoseSound();
+      this.lightImpact(90);
+    } catch (e) {
+      console.warn('Lose effects failed', e);
+    }
     this.isLevelTransitioning = true;
     this.testOutcome = 'failure';
     this.testLastResult = {

@@ -30,7 +30,6 @@ export class TutorialScene extends Phaser.Scene {
   private buttonText!: Phaser.GameObjects.Text;
   private skipText!: Phaser.GameObjects.Text;
   private centerX = 0;
-  private centerY = 0;
   private baseScale = 1;
 
   constructor() {
@@ -42,21 +41,21 @@ export class TutorialScene extends Phaser.Scene {
     this.shape = this.add.graphics();
     this.guide = this.add.graphics();
 
-    this.titleText = this.add.text(0, 0, '', {
+    this.titleText = this.add.text(0, 0, ' ', {
       fontSize: '34px',
       color: '#ffffff',
       fontStyle: 'bold',
       align: 'center',
     }).setOrigin(0.5);
 
-    this.bodyText = this.add.text(0, 0, '', {
+    this.bodyText = this.add.text(0, 0, ' ', {
       fontSize: '18px',
       color: '#d8e4ff',
       align: 'center',
       lineSpacing: 6,
     }).setOrigin(0.5);
 
-    this.progressText = this.add.text(0, 0, '', {
+    this.progressText = this.add.text(0, 0, ' ', {
       fontSize: '14px',
       color: '#8fb4ff',
       fontStyle: 'bold',
@@ -64,7 +63,7 @@ export class TutorialScene extends Phaser.Scene {
 
     this.button = this.add.container(0, 0);
     this.buttonBg = this.add.graphics();
-    this.buttonText = this.add.text(0, 0, '', {
+    this.buttonText = this.add.text(0, 0, ' ', {
       fontSize: '24px',
       color: '#ffffff',
       fontStyle: 'bold',
@@ -119,7 +118,6 @@ export class TutorialScene extends Phaser.Scene {
     const height = gameSize.height;
 
     this.centerX = width / 2;
-    this.centerY = height / 2;
     this.baseScale = Math.min(width, height);
 
     this.bg.clear();
@@ -129,13 +127,15 @@ export class TutorialScene extends Phaser.Scene {
     for (let x = 0; x <= width; x += 40) this.bg.lineBetween(x, 0, x, height);
     for (let y = 0; y <= height; y += 40) this.bg.lineBetween(0, y, width, y);
 
-    this.titleText.setFontSize(Math.max(28, this.baseScale * 0.06));
-    this.titleText.setPosition(this.centerX, height * 0.16);
-    this.bodyText.setFontSize(Math.max(15, this.baseScale * 0.033));
-    this.bodyText.setWordWrapWidth(width * 0.78);
-    this.bodyText.setPosition(this.centerX, height * 0.76);
-    this.progressText.setPosition(this.centerX, height * 0.88);
-    this.button.setPosition(this.centerX, height * 0.66);
+    this.titleText.setFontSize(Math.max(24, this.baseScale * 0.05));
+    this.titleText.setPosition(this.centerX, height * 0.12);
+    this.bodyText.setFontSize(Math.max(16, this.baseScale * 0.03));
+    this.bodyText.setWordWrapWidth(width * 0.8);
+    this.bodyText.setPosition(this.centerX, height * 0.80);
+    this.progressText.setFontSize(Math.max(14, this.baseScale * 0.025));
+    this.progressText.setPosition(this.centerX, height * 0.90);
+    this.button.setPosition(this.centerX, height * 0.68);
+    this.skipText.setFontSize(Math.max(14, this.baseScale * 0.025));
     this.skipText.setPosition(width - 50, 34);
 
     this.drawButton();
@@ -153,22 +153,34 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   private drawButton() {
+    const btnW = Math.max(220, this.baseScale * 0.25);
+    const btnH = Math.max(72, this.baseScale * 0.08);
+    const radius = btnH * 0.25;
+
     this.buttonBg.clear();
     this.buttonBg.fillStyle(0x4488ff, 1);
-    this.buttonBg.fillRoundedRect(-110, -36, 220, 72, 18);
-    this.buttonBg.lineStyle(3, 0xffffff, 0.28);
-    this.buttonBg.strokeRoundedRect(-110, -36, 220, 72, 18);
+    this.buttonBg.fillRoundedRect(-btnW/2, -btnH/2, btnW, btnH, radius);
+    this.buttonBg.lineStyle(Math.max(2, this.baseScale * 0.004), 0xffffff, 0.28);
+    this.buttonBg.strokeRoundedRect(-btnW/2, -btnH/2, btnW, btnH, radius);
+    
+    this.buttonText.setFontSize(Math.max(20, this.baseScale * 0.035));
+    
+    // Update hit area
+    const zone = this.button.list.find(child => child.type === 'Zone') as Phaser.GameObjects.Zone;
+    if (zone) {
+      zone.setSize(btnW, btnH);
+    }
   }
 
   private drawExample() {
-    const radius = Math.min(150, this.baseScale * 0.22);
-    const cy = this.centerY * 0.86;
+    const radius = Math.min(250, this.baseScale * 0.18);
+    const cy = this.scale.gameSize.height * 0.40;
 
     this.shape.clear();
     this.guide.clear();
 
     this.shape.fillStyle(0x4488ff, 1);
-    this.shape.lineStyle(4, 0xffffff, 0.9);
+    this.shape.lineStyle(Math.max(3, this.baseScale * 0.005), 0xffffff, 0.9);
 
     if (this.stepIndex === 1) {
       this.shape.fillCircle(this.centerX, cy, radius);
@@ -194,11 +206,11 @@ export class TutorialScene extends Phaser.Scene {
     const fromX = this.centerX - lineLength;
     const toX = this.centerX + lineLength;
     const y = cy;
-    this.guide.lineStyle(5, 0xffffff, 0.95);
+    this.guide.lineStyle(Math.max(4, this.baseScale * 0.006), 0xffffff, 0.95);
     this.guide.lineBetween(fromX, y, toX, y);
     this.guide.fillStyle(0x00ff99, 1);
-    this.guide.fillCircle(fromX, y, 8);
-    this.guide.fillCircle(toX, y, 8);
+    this.guide.fillCircle(fromX, y, Math.max(6, this.baseScale * 0.01));
+    this.guide.fillCircle(toX, y, Math.max(6, this.baseScale * 0.01));
 
     this.tweens.killTweensOf(this.guide);
     this.guide.setAlpha(0.15);
