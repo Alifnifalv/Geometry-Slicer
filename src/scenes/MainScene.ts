@@ -151,9 +151,9 @@ export class MainScene extends Phaser.Scene {
     this.bgGrid = this.add.grid(0, 0, 800, 800, 40, 40, 0x1a1a1a, 1, 0x333333, 0.5).setOrigin(0.5);
 
     this.graphics = this.add.graphics();
-    this.sliceTrail = this.add.graphics();
-    this.uiGraphics = this.add.graphics();
-    this.tutorialGraphics = this.add.graphics();
+    this.sliceTrail = this.add.graphics().setDepth(100);
+    this.uiGraphics = this.add.graphics().setDepth(101);
+    this.tutorialGraphics = this.add.graphics().setDepth(102);
 
     const pixelGraphics = this.add.graphics();
     pixelGraphics.setVisible(false);
@@ -162,22 +162,22 @@ export class MainScene extends Phaser.Scene {
     pixelGraphics.generateTexture('particle', 8, 8);
     pixelGraphics.destroy();
 
-    this.popupBg = this.add.graphics();
+    this.popupBg = this.add.graphics().setDepth(110);
     this.messageText = this.add.text(0, 50, '', {
       fontSize: '24px',
       color: '#ffffff',
       fontStyle: 'bold',
       align: 'center'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(111);
 
-    this.uiTextBg = this.add.graphics();
+    this.uiTextBg = this.add.graphics().setDepth(112);
     this.uiText = this.add.text(0, 0, ' ', {
       fontSize: '18px',
       color: '#ffffff',
       fontStyle: 'bold',
       lineSpacing: 4,
       align: 'center'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(113);
 
     this.createButtons();
     this.createMathHintModal();
@@ -207,46 +207,47 @@ export class MainScene extends Phaser.Scene {
       bg.lineStyle(this.px(2), 0xffffff, 0.3).strokeRoundedRect(-width / 2, -height / 2, width, height, radius);
       const txt = this.add.text(0, 0, text, { fontSize: `${this.px(14)}px`, color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
       container.add([shadow, bg, txt]);
-      const zone = this.add.zone(0, 0, width, height).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      container.add(zone);
-      return { container, zone };
+      container.setInteractive({
+        hitArea: new Phaser.Geom.Rectangle(-width/2, -height/2, width, height),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains
+      });
+      container.setDepth(120); // Make sure buttons are above everything else
+      return container;
     };
 
-    const menu = createBtn('MENU', 0x333333);
-    this.btnMenu = menu.container;
-    menu.zone.on('pointerdown', () => {
+    this.btnMenu = createBtn('MENU', 0x444455);
+    this.btnHint = createBtn('💡 HINT', 0x3399ff);
+    this.btnRestart = createBtn('RESTART', 0xffa500);
+
+    this.btnMenu.on('pointerdown', () => {
       soundManager.init();
       this.btnMenu.setScale(0.9);
     });
-    menu.zone.on('pointerup', () => {
+    this.btnMenu.on('pointerup', () => {
       soundManager.playClickSound();
       this.btnMenu.setScale(1);
       this.scene.start('MenuScene');
     });
-    menu.zone.on('pointerout', () => this.btnMenu.setScale(1));
+    this.btnMenu.on('pointerout', () => this.btnMenu.setScale(1));
 
-    const restart = createBtn('RESTART', 0xffaa00);
-    this.btnRestart = restart.container;
-    restart.zone.on('pointerdown', () => {
+    this.btnRestart.on('pointerdown', () => {
       soundManager.init();
       this.btnRestart.setScale(0.9);
     });
-    restart.zone.on('pointerup', () => {
+    this.btnRestart.on('pointerup', () => {
       soundManager.playClickSound();
       playablesPlatform.trackEvent('restart');
       void playablesPlatform.saveAnalytics();
       this.btnRestart.setScale(1);
       this.initLevel();
     });
-    restart.zone.on('pointerout', () => this.btnRestart.setScale(1));
+    this.btnRestart.on('pointerout', () => this.btnRestart.setScale(1));
 
-    const hint = createBtn('💡 HINT', 0x22aaff);
-    this.btnHint = hint.container;
-    hint.zone.on('pointerdown', () => {
+    this.btnHint.on('pointerdown', () => {
       soundManager.init();
       this.btnHint.setScale(0.9);
     });
-    hint.zone.on('pointerup', () => {
+    this.btnHint.on('pointerup', () => {
       soundManager.playClickSound();
       this.btnHint.setScale(1);
       const chapter = Chapters[this.currentChapterIndex];
@@ -258,7 +259,7 @@ export class MainScene extends Phaser.Scene {
         this.showPopup(level.mathHint, '#00ffff', 4000);
       }
     });
-    hint.zone.on('pointerout', () => this.btnHint.setScale(1));
+    this.btnHint.on('pointerout', () => this.btnHint.setScale(1));
   }
 
   private createMathHintModal() {
@@ -579,8 +580,8 @@ export class MainScene extends Phaser.Scene {
     this.bgGrid.setPosition(this.centerX, this.centerY);
     this.bgGrid.setDisplaySize(width + 80, height + 80);
 
-    // Keep a larger margin for mobile finger space (scale to 70%)
-    this.baseScale = Math.min(width, height) * 0.7;
+    // Keep a larger margin for mobile finger space (scale to 85%)
+    this.baseScale = Math.min(width, height) * 0.85;
 
     // Dynamic responsive font sizes
     this.messageText.setFontSize(Math.max(16, this.baseScale * 0.1));
@@ -857,7 +858,7 @@ export class MainScene extends Phaser.Scene {
 
     // Hide all existing pieces in the pool
     for (const g of this.pieceGraphicsPool) g.setVisible(false);
-    for (const mg of this.maskGraphicsPool) mg.setVisible(false);
+    // DO NOT hide mask graphics. A GeometryMask requires the graphics object to remain visible (Phaser doesn't render `make` objects to the display list, but they must be 'visible' for the stencil buffer).
 
     let poolIdx = 0;
     for (const piece of this.pieces) {
@@ -870,6 +871,7 @@ export class MainScene extends Phaser.Scene {
       const maskG = this.maskGraphicsPool[poolIdx];
 
       g.setVisible(true);
+      maskG.setVisible(true); // Must be true for stencil buffer!
       g.clear();
       maskG.clear();
 
@@ -948,59 +950,73 @@ export class MainScene extends Phaser.Scene {
           g.fillStyle(style.featColor, piece.alpha * 0.8);
           g.lineStyle(2, style.featColor, piece.alpha * 0.6);
 
-          for (let gx = -0.8; gx <= 0.8; gx += 0.15) {
-            for (let gy = -0.8; gy <= 0.8; gy += 0.15) {
-              const jx = gx + Math.sin(gx * 50 + gy * 30) * 0.05;
-              const jy = gy + Math.cos(gy * 50 + gx * 30) * 0.05;
+          if (style.feature === 'grid') {
+            for (let v = -2.5; v <= 2.5; v += 0.2) {
+              const ptStart1 = transformPoint([v, -2.5]);
+              const ptEnd1 = transformPoint([v, 2.5]);
+              g.beginPath();
+              g.moveTo(ptStart1.x, ptStart1.y);
+              g.lineTo(ptEnd1.x, ptEnd1.y);
+              g.strokePath();
 
-              // Ensure we only draw features near the polygon to save processing
-              // and prevent wild rendering if masks ever fail.
-              if (!GeometryManager.isPointInPolygon({x: jx, y: jy}, region)) continue;
+              const ptStart2 = transformPoint([-2.5, v]);
+              const ptEnd2 = transformPoint([2.5, v]);
+              g.beginPath();
+              g.moveTo(ptStart2.x, ptStart2.y);
+              g.lineTo(ptEnd2.x, ptEnd2.y);
+              g.strokePath();
+            }
+          } else if (style.feature === 'lines') {
+            for (let v = -3.5; v <= 3.5; v += 0.15) {
+              const ptStart = transformPoint([-2.5, v]);
+              const ptEnd = transformPoint([2.5, v - 1.7]);
+              g.beginPath();
+              g.moveTo(ptStart.x, ptStart.y);
+              g.lineTo(ptEnd.x, ptEnd.y);
+              g.strokePath();
+            }
+          } else {
+            for (let gx = -0.8; gx <= 0.8; gx += 0.15) {
+              for (let gy = -0.8; gy <= 0.8; gy += 0.15) {
+                const jx = gx + Math.sin(gx * 50 + gy * 30) * 0.05;
+                const jy = gy + Math.cos(gy * 50 + gx * 30) * 0.05;
 
-              const pt = transformPoint([jx, jy]);
+                // Ensure we only draw features near the polygon to save processing
+                // and prevent wild rendering if masks ever fail.
+                if (!GeometryManager.isPointInPolygon({x: jx, y: jy}, region)) continue;
 
-              if (style.feature === 'circles') {
-                if (piece.itemType === 'fried_egg') {
-                  if (Math.abs(jx) < 0.2 && Math.abs(jy) < 0.2 && Math.abs(gx) < 0.01 && Math.abs(gy) < 0.01) {
-                    g.fillStyle(style.featColor, piece.alpha * 0.9);
-                    g.fillCircle(pt.x, pt.y, this.baseScale * 0.15);
-                    g.fillStyle(0xffffff, piece.alpha * 0.5);
-                    g.fillCircle(pt.x - this.baseScale * 0.04, pt.y - this.baseScale * 0.04, this.baseScale * 0.04);
+                const pt = transformPoint([jx, jy]);
+
+                if (style.feature === 'circles') {
+                  if (piece.itemType === 'fried_egg') {
+                    if (Math.abs(jx) < 0.2 && Math.abs(jy) < 0.2 && Math.abs(gx) < 0.01 && Math.abs(gy) < 0.01) {
+                      g.fillStyle(style.featColor, piece.alpha * 0.9);
+                      g.fillCircle(pt.x, pt.y, this.baseScale * 0.15);
+                      g.fillStyle(0xffffff, piece.alpha * 0.5);
+                      g.fillCircle(pt.x - this.baseScale * 0.04, pt.y - this.baseScale * 0.04, this.baseScale * 0.04);
+                    }
+                  } else if (piece.itemType === 'pizza') {
+                    const radius = this.baseScale * (0.02 + Math.abs(Math.sin(jx*10)) * 0.03);
+                    g.fillStyle(style.featColor, piece.alpha * 0.8);
+                    g.fillCircle(pt.x, pt.y, radius);
+                    // Add tiny green toppings
+                    if (Math.abs(Math.cos(jx*20 + jy*15)) > 0.6) {
+                      g.fillStyle(0x225511, piece.alpha * 0.8);
+                      const gp = transformPoint([jx + 0.05, jy + 0.05]);
+                      g.fillCircle(gp.x, gp.y, this.baseScale * 0.01);
+                    }
+                  } else if (piece.itemType === 'cheese') {
+                    const radius = this.baseScale * (0.02 + Math.abs(Math.cos(jy*20)) * 0.04);
+                    g.fillStyle(style.featColor, piece.alpha * 0.8);
+                    g.fillCircle(pt.x, pt.y, radius);
+                  } else {
+                    g.fillStyle(style.featColor, piece.alpha * 0.8);
+                    g.fillCircle(pt.x, pt.y, this.baseScale * 0.03);
                   }
-                } else if (piece.itemType === 'pizza') {
-                  const radius = this.baseScale * (0.02 + Math.abs(Math.sin(jx*10)) * 0.03);
+                } else if (style.feature === 'dots') {
                   g.fillStyle(style.featColor, piece.alpha * 0.8);
-                  g.fillCircle(pt.x, pt.y, radius);
-                  // Add tiny green toppings
-                  if (Math.abs(Math.cos(jx*20 + jy*15)) > 0.6) {
-                    g.fillStyle(0x225511, piece.alpha * 0.8);
-                    const gp = transformPoint([jx + 0.05, jy + 0.05]);
-                    g.fillCircle(gp.x, gp.y, this.baseScale * 0.01);
-                  }
-                } else if (piece.itemType === 'cheese') {
-                  const radius = this.baseScale * (0.02 + Math.abs(Math.cos(jy*20)) * 0.04);
-                  g.fillStyle(style.featColor, piece.alpha * 0.8);
-                  g.fillCircle(pt.x, pt.y, radius);
-                } else {
-                  g.fillStyle(style.featColor, piece.alpha * 0.8);
-                  g.fillCircle(pt.x, pt.y, this.baseScale * 0.03);
+                  g.fillCircle(pt.x, pt.y, this.baseScale * 0.01);
                 }
-              } else if (style.feature === 'dots') {
-                g.fillStyle(style.featColor, piece.alpha * 0.8);
-                g.fillCircle(pt.x, pt.y, this.baseScale * 0.01);
-              } else if (style.feature === 'lines') {
-                g.beginPath();
-                g.moveTo(pt.x, pt.y);
-                const ptEnd = transformPoint([jx + 0.1, jy + (Math.sin(jx*10)*0.1)]);
-                g.lineTo(ptEnd.x, ptEnd.y);
-                g.strokePath();
-              } else if (style.feature === 'grid') {
-                g.beginPath();
-                g.moveTo(pt.x - 15, pt.y);
-                g.lineTo(pt.x + 15, pt.y);
-                g.moveTo(pt.x, pt.y - 15);
-                g.lineTo(pt.x, pt.y + 15);
-                g.strokePath();
               }
             }
           }
