@@ -89,6 +89,11 @@ export class MainScene extends Phaser.Scene {
   private uiTextBg!: Phaser.GameObjects.Graphics;
   private percentageTexts: Phaser.GameObjects.Text[] = [];
 
+  private tutorialGraphics!: Phaser.GameObjects.Graphics;
+  private tutorialTween!: Phaser.Tweens.Tween;
+  private sliceTrail!: Phaser.GameObjects.Graphics;
+  private trailPoints: {x: number, y: number, alpha: number}[] = [];
+
   private btnMenu!: Phaser.GameObjects.Container;
   private btnRestart!: Phaser.GameObjects.Container;
   private popupBg!: Phaser.GameObjects.Graphics;
@@ -135,7 +140,16 @@ export class MainScene extends Phaser.Scene {
     this.bgGrid = this.add.grid(0, 0, 800, 800, 40, 40, 0x1a1a1a, 1, 0x333333, 0.5).setOrigin(0.5);
 
     this.graphics = this.add.graphics();
+    this.sliceTrail = this.add.graphics();
     this.uiGraphics = this.add.graphics();
+    this.tutorialGraphics = this.add.graphics();
+
+    const pixelGraphics = this.add.graphics();
+    pixelGraphics.setVisible(false);
+    pixelGraphics.fillStyle(0xffffff, 1);
+    pixelGraphics.fillRect(0, 0, 8, 8);
+    pixelGraphics.generateTexture('particle', 8, 8);
+    pixelGraphics.destroy();
 
     this.popupBg = this.add.graphics();
     this.messageText = this.add.text(0, 50, '', {
@@ -254,8 +268,51 @@ export class MainScene extends Phaser.Scene {
     });
 
     this.updateHUD();
-    this.showPopup(this.getLevelInstruction(), '#ffffff');
+
+    if (this.currentChapterIndex === 0 && this.currentLevelIndex === 0) {
+      this.showPopup('Tutorial: Swipe twice to make 3 pieces', '#ffffff');
+      this.startInteractiveTutorial();
+    } else {
+      this.showPopup(this.getLevelInstruction(), '#ffffff');
+    }
+
     this.drawPieces();
+  }
+
+  private startInteractiveTutorial() {
+    if (this.tutorialTween) this.tutorialTween.remove();
+    this.tutorialGraphics.clear();
+    this.tutorialGraphics.setAlpha(1);
+
+    const fromY = this.centerY - this.baseScale * 0.4;
+    const toY = this.centerY + this.baseScale * 0.4;
+
+    this.tutorialTween = this.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: 1800,
+      repeat: -1,
+      onUpdate: (tween) => {
+        const v = tween.getValue() as number;
+        this.tutorialGraphics.clear();
+        this.tutorialGraphics.lineStyle(Math.max(4, this.baseScale * 0.015), 0x00ff99, 0.8);
+
+        // Two parallel cuts for 3 pieces
+        const xOffset = this.baseScale * 0.266;
+
+        // Draw dashed guides
+        for(let y = fromY; y < toY; y += 20) {
+          this.tutorialGraphics.lineBetween(this.centerX - xOffset, y, this.centerX - xOffset, y + 10);
+          this.tutorialGraphics.lineBetween(this.centerX + xOffset, y, this.centerX + xOffset, y + 10);
+        }
+
+        // Draw moving "fingers"
+        const currentY = fromY + (toY - fromY) * v;
+        this.tutorialGraphics.fillStyle(0xffffff, Math.max(0, 1 - v * 1.5));
+        this.tutorialGraphics.fillCircle(this.centerX - xOffset, currentY, Math.max(8, this.baseScale * 0.025));
+        this.tutorialGraphics.fillCircle(this.centerX + xOffset, currentY, Math.max(8, this.baseScale * 0.025));
+      }
+    });
   }
 
   private isAutoplayMode(): boolean {
@@ -330,15 +387,18 @@ export class MainScene extends Phaser.Scene {
   private updateHUD() {
     const chapterName = Chapters[this.currentChapterIndex].name;
     this.uiText.setText(`CHAPTER ${this.currentChapterIndex + 1}: ${chapterName.toUpperCase()}\nLEVEL ${this.currentLevelIndex + 1}   |   CUTS LEFT: ${this.cutsRemaining}`);
-    
+
     // Draw pill background behind UI text
     this.time.delayedCall(10, () => {
       this.uiTextBg.clear();
       const bounds = this.uiText.getBounds();
+      // Increase padding specifically for multiline text
+      const padX = this.px(20);
+      const padY = this.px(12);
       this.uiTextBg.fillStyle(0x000000, 0.7);
-      this.uiTextBg.fillRoundedRect(bounds.x - this.px(15), bounds.y - this.px(10), bounds.width + this.px(30), bounds.height + this.px(20), this.px(16));
+      this.uiTextBg.fillRoundedRect(bounds.x - padX, bounds.y - padY, bounds.width + padX * 2, bounds.height + padY * 2, this.px(16));
       this.uiTextBg.lineStyle(this.px(2), 0xffffff, 0.2);
-      this.uiTextBg.strokeRoundedRect(bounds.x - this.px(15), bounds.y - this.px(10), bounds.width + this.px(30), bounds.height + this.px(20), this.px(16));
+      this.uiTextBg.strokeRoundedRect(bounds.x - padX, bounds.y - padY, bounds.width + padX * 2, bounds.height + padY * 2, this.px(16));
     });
   }
 
@@ -351,22 +411,22 @@ export class MainScene extends Phaser.Scene {
     // Scale and perfectly center grid
     this.bgGrid.setPosition(this.centerX, this.centerY);
     this.bgGrid.setDisplaySize(width + 80, height + 80);
-    
+
     // Keep a larger margin for mobile finger space (scale to 70%)
     this.baseScale = Math.min(width, height) * 0.7;
 
     // Dynamic responsive font sizes
     this.messageText.setFontSize(Math.max(16, this.baseScale * 0.1));
-    this.messageText.setPosition(this.centerX, height * 0.15); 
-    this.messageText.setWordWrapWidth(width * 0.85); 
-    
+    this.messageText.setPosition(this.centerX, height * 0.15);
+    this.messageText.setWordWrapWidth(width * 0.85);
+
     // Resize popup bg to match text
     this.drawPopupBg();
 
     this.uiText.setFontSize(Math.max(12, this.baseScale * 0.05));
     this.uiText.setWordWrapWidth(width * 0.9);
     // Position HUD anchored 50px from the bottom edge
-    this.uiText.setPosition(this.centerX, height - (this.uiText.height / 2) - 30); 
+    this.uiText.setPosition(this.centerX, height - (this.uiText.height / 2) - 30);
     this.updateHUD(); // force bg redraw
 
     this.btnMenu.setPosition(this.px(60), this.px(40));
@@ -381,7 +441,7 @@ export class MainScene extends Phaser.Scene {
     this.messageText.setColor(color);
     this.messageText.setScale(0.5);
     this.messageText.setAlpha(0);
-    
+
     // Kill any existing tweens on the message text
     this.tweens.killTweensOf(this.messageText);
 
@@ -398,17 +458,17 @@ export class MainScene extends Phaser.Scene {
   private drawPopupBg() {
     this.popupBg.clear();
     if (!this.messageText.text) return;
-    
+
     const bounds = this.messageText.getBounds();
     const padX = this.px(20);
     const padY = this.px(10);
-    
+
     this.popupBg.fillStyle(0x000000, 0.8);
     this.popupBg.fillRoundedRect(
-      bounds.x - padX, 
-      bounds.y - padY, 
-      bounds.width + padX * 2, 
-      bounds.height + padY * 2, 
+      bounds.x - padX,
+      bounds.y - padY,
+      bounds.width + padX * 2,
+      bounds.height + padY * 2,
       this.px(16)
     );
     const messageColor = typeof this.messageText.style.color === 'string'
@@ -416,10 +476,10 @@ export class MainScene extends Phaser.Scene {
       : '#ffffff';
     this.popupBg.lineStyle(this.px(3), Phaser.Display.Color.HexStringToColor(messageColor).color, 0.8);
     this.popupBg.strokeRoundedRect(
-      bounds.x - padX, 
-      bounds.y - padY, 
-      bounds.width + padX * 2, 
-      bounds.height + padY * 2, 
+      bounds.x - padX,
+      bounds.y - padY,
+      bounds.width + padX * 2,
+      bounds.height + padY * 2,
       this.px(16)
     );
   }
@@ -443,15 +503,23 @@ export class MainScene extends Phaser.Scene {
     if (this.isLevelTransitioning) return;
     if (this.cutsRemaining <= 0) return;
     if (this.pieces.length >= 20) return; // limit slices for performance
-    
+
+    if (this.tutorialTween) {
+      this.tutorialTween.remove();
+      this.tutorialGraphics.clear();
+    }
+
     this.isDragging = true;
     this.startPoint = { x: pointer.x, y: pointer.y };
     this.endPoint = { x: pointer.x, y: pointer.y };
+    this.trailPoints = [];
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer) {
     if (!this.isDragging) return;
     this.endPoint = { x: pointer.x, y: pointer.y };
+    this.trailPoints.push({ x: pointer.x, y: pointer.y, alpha: 1 });
+    if (this.trailPoints.length > 15) this.trailPoints.shift();
     this.drawUI();
   }
 
@@ -459,6 +527,14 @@ export class MainScene extends Phaser.Scene {
     if (!this.isDragging) return;
     this.isDragging = false;
     this.uiGraphics.clear();
+
+    // Fade out trail
+    this.tweens.add({
+      targets: this.trailPoints,
+      alpha: 0,
+      duration: 300,
+      onUpdate: () => this.drawUI()
+    });
 
     const dx = this.endPoint.x - this.startPoint.x;
     const dy = this.endPoint.y - this.startPoint.y;
@@ -474,6 +550,7 @@ export class MainScene extends Phaser.Scene {
         this.cutsUsedThisLevel++;
         this.lightImpact(18);
         this.cameras.main.shake(150, 0.005);
+        this.emitParticles(this.startPoint, this.endPoint);
       } catch (e) {
         console.warn('Juice effect failed:', e);
       }
@@ -489,6 +566,22 @@ export class MainScene extends Phaser.Scene {
     if ('vibrate' in navigator) {
       navigator.vibrate(duration);
     }
+  }
+
+  private emitParticles(p1: {x: number, y: number}, p2: {x: number, y: number}) {
+    const cx = (p1.x + p2.x) / 2;
+    const cy = (p1.y + p2.y) / 2;
+    const emitter = this.add.particles(cx, cy, 'particle', {
+      speed: { min: 100, max: 400 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 1, end: 0 },
+      alpha: { start: 1, end: 0 },
+      lifespan: 600,
+      quantity: 15,
+      tint: [0xffffff, 0x00ff99, 0x4488ff]
+    });
+    emitter.explode();
+    this.time.delayedCall(1000, () => emitter.destroy());
   }
 
   private sliceShapes(): boolean {
@@ -516,19 +609,19 @@ export class MainScene extends Phaser.Scene {
 
       if (resultRegions.length > 1) {
         wasSliced = true;
-        
+
         for (const r of resultRegions) {
           const centroid = GeometryManager.getCentroid(r);
-          
+
           // Determine which side of the line the piece is on
           const v_dx = centroid.x - relStart.x;
           const v_dy = centroid.y - relStart.y;
           const dot = v_dx * nx + v_dy * ny;
           const sign = dot > 0 ? 1 : -1;
-          
+
           // Randomize color to visually confirm cut
           const newColor = Phaser.Display.Color.RandomRGB().color;
-          
+
           // Add a relative offset representing a few pixels apart
           // e.g. 0.02 relative units
           const pushForce = 0.02;
@@ -551,7 +644,7 @@ export class MainScene extends Phaser.Scene {
       this.pieces = newPieces;
       this.drawPieces();
     }
-    
+
     return wasSliced;
   }
 
@@ -563,12 +656,12 @@ export class MainScene extends Phaser.Scene {
       // Scale line stroke thickness dynamically
       this.graphics.lineStyle(Math.max(2, this.baseScale * 0.01), 0xffffff, piece.alpha);
       this.graphics.beginPath();
-      
+
       const region = piece.region;
       if (region.length > 0) {
         // Calculate centroid of the raw region for scaling around its own center
         const centroid = GeometryManager.getCentroid(region);
-        
+
         const transformPoint = (p: number[]) => {
           // Move to origin, scale, move back to centroid, then apply offsets
           const dx = p[0] - centroid.x;
@@ -580,12 +673,12 @@ export class MainScene extends Phaser.Scene {
 
         const startPoint = transformPoint(region[0]);
         this.graphics.moveTo(startPoint.x, startPoint.y);
-        
+
         for (let i = 1; i < region.length; i++) {
           const p = transformPoint(region[i]);
           this.graphics.lineTo(p.x, p.y);
         }
-        
+
         this.graphics.closePath();
         this.graphics.fillPath();
         this.graphics.strokePath();
@@ -612,13 +705,13 @@ export class MainScene extends Phaser.Scene {
     this.uiGraphics.clear();
     // Scale preview line thickness dynamically
     this.uiGraphics.lineStyle(Math.max(4, this.baseScale * 0.015), 0xffffff, 0.8);
-    
+
     // Render dotted line preview
     const dx = this.endPoint.x - this.startPoint.x;
     const dy = this.endPoint.y - this.startPoint.y;
     const len = Math.sqrt(dx * dx + dy * dy);
     const steps = Math.floor(len / 15);
-    
+
     for (let i = 0; i < steps; i++) {
       if (i % 2 === 0) {
         const sx = this.startPoint.x + dx * (i / steps);
@@ -633,9 +726,27 @@ export class MainScene extends Phaser.Scene {
     }
 
     this.uiGraphics.fillStyle(0x00ff99, 1);
-    this.uiGraphics.fillCircle(this.startPoint.x, this.startPoint.y, Math.max(5, this.baseScale * 0.012));
-    this.uiGraphics.fillStyle(0xffffff, 1);
-    this.uiGraphics.fillCircle(this.endPoint.x, this.endPoint.y, Math.max(5, this.baseScale * 0.012));
+    if (this.isDragging) {
+      this.uiGraphics.fillCircle(this.startPoint.x, this.startPoint.y, Math.max(5, this.baseScale * 0.012));
+      this.uiGraphics.fillStyle(0xffffff, 1);
+      this.uiGraphics.fillCircle(this.endPoint.x, this.endPoint.y, Math.max(5, this.baseScale * 0.012));
+    }
+
+    // Draw swipe trail
+    this.sliceTrail.clear();
+    if (this.trailPoints.length > 1) {
+      for (let i = 1; i < this.trailPoints.length; i++) {
+        const p1 = this.trailPoints[i - 1];
+        const p2 = this.trailPoints[i];
+        if (p1.alpha > 0) {
+          this.sliceTrail.lineStyle(Math.max(6, this.baseScale * 0.02) * (i / this.trailPoints.length), 0xffffff, p1.alpha * 0.6);
+          this.sliceTrail.beginPath();
+          this.sliceTrail.moveTo(p1.x, p1.y);
+          this.sliceTrail.lineTo(p2.x, p2.y);
+          this.sliceTrail.strokePath();
+        }
+      }
+    }
   }
 
   private checkWinCondition() {
@@ -648,7 +759,9 @@ export class MainScene extends Phaser.Scene {
     if (evaluation.isSuccess || this.cutsRemaining <= 0) {
       this.applyAreaFeedbackColors(evaluation);
       this.drawPieces();
-      this.showPercentages(evaluation);
+      if (evaluation.isPieceCountCorrect) {
+        this.showPercentages(evaluation);
+      }
     }
 
     if (evaluation.isSuccess) {
@@ -863,12 +976,22 @@ export class MainScene extends Phaser.Scene {
     };
     playablesPlatform.trackEvent('level_fail');
     await playablesPlatform.saveAnalytics();
-    this.showPopup(`Try again: ${evaluation.feedback}`, '#ff4455');
+    this.showPopup(`Try again: ${evaluation.feedback}\n(Tap anywhere to retry)`, '#ff4455');
+
+    const retryOverlay = this.add.zone(0, 0, this.scale.width, this.scale.height).setOrigin(0).setInteractive();
+    retryOverlay.once('pointerdown', () => {
+      retryOverlay.destroy();
+      this.initLevel();
+    });
 
     if (this.isAutoplayMode()) return;
 
-    this.time.delayedCall(2600, () => {
-      this.initLevel();
+    // Faster auto-retry if they don't tap
+    this.time.delayedCall(1200, () => {
+      if (retryOverlay.active) {
+        retryOverlay.destroy();
+        this.initLevel();
+      }
     });
   }
 

@@ -19,7 +19,6 @@ export class MenuScene extends Phaser.Scene {
   private hintText!: Phaser.GameObjects.Text;
   private bgGraphics!: Phaser.GameObjects.Graphics;
   private playButton!: ButtonParts;
-  private tutorialButton!: ButtonParts;
   private newGameButton!: ButtonParts;
   private prevButton!: ButtonParts;
   private nextButton!: ButtonParts;
@@ -85,13 +84,11 @@ export class MenuScene extends Phaser.Scene {
     this.prevButton = this.createButton('<', 0x24304d, 66, 54);
     this.nextButton = this.createButton('>', 0x24304d, 66, 54);
     this.playButton = this.createButton('PLAY', 0x4488ff, 210, 68);
-    this.tutorialButton = this.createButton('HOW TO PLAY', 0x2f3a52, 190, 52);
     this.newGameButton = this.createButton('NEW GAME', 0x382838, 170, 52);
 
     this.prevButton.zone.on('pointerup', () => this.changeChapter(-1));
     this.nextButton.zone.on('pointerup', () => this.changeChapter(1));
     this.playButton.zone.on('pointerup', () => this.startSelectedLevel());
-    this.tutorialButton.zone.on('pointerup', () => this.scene.start('TutorialScene'));
     this.newGameButton.zone.on('pointerup', () => {
       void playablesPlatform.resetProgress();
       this.selectedChapterIndex = 0;
@@ -167,7 +164,7 @@ export class MenuScene extends Phaser.Scene {
         : 'Chapter locked'
     );
     this.hintText.setText('Tap a level, then play. Replay unlocked levels to improve your grade.');
-    this.playButton.text.setText(playablesPlatform.isTutorialCompleted() ? 'PLAY LEVEL' : 'START TUTORIAL');
+    this.playButton.text.setText('PLAY');
     this.playButton.container.setAlpha(this.isLevelUnlocked(this.selectedChapterIndex, this.selectedLevelIndex) ? 1 : 0.45);
     this.prevButton.container.setAlpha(this.selectedChapterIndex > 0 ? 1 : 0.35);
     this.nextButton.container.setAlpha(this.selectedChapterIndex < Chapters.length - 1 ? 1 : 0.35);
@@ -234,10 +231,7 @@ export class MenuScene extends Phaser.Scene {
   private startSelectedLevel() {
     if (!this.isLevelUnlocked(this.selectedChapterIndex, this.selectedLevelIndex)) return;
 
-    if (!playablesPlatform.isTutorialCompleted()) {
-      this.scene.start('TutorialScene');
-      return;
-    }
+    // Tutorial is now handled interactively in MainScene
 
     this.scene.start('MainScene', {
       chapter: this.selectedChapterIndex,
@@ -337,17 +331,14 @@ export class MenuScene extends Phaser.Scene {
     this.prevButton.container.setPosition(Math.max(this.px(42), width * 0.14), height * 0.34);
     this.nextButton.container.setPosition(Math.min(width - this.px(42), width * 0.86), height * 0.34);
     this.playButton.container.setPosition(cx, height * 0.72);
-    this.tutorialButton.container.setPosition(cx - Math.min(this.px(120), width * 0.23), height * 0.82);
-    this.newGameButton.container.setPosition(cx + Math.min(this.px(120), width * 0.23), height * 0.82);
+    this.newGameButton.container.setPosition(cx, height * 0.85);
 
     this.drawButton(this.playButton.bg, 0x4488ff, 210, 68);
-    this.drawButton(this.tutorialButton.bg, 0x2f3a52, 190, 52);
     this.drawButton(this.newGameButton.bg, 0x382838, 170, 52);
     this.drawButton(this.prevButton.bg, 0x24304d, 66, 54);
     this.drawButton(this.nextButton.bg, 0x24304d, 66, 54);
 
     this.playButton.text.setFontSize(Math.max(this.px(18), baseScale * 0.038));
-    this.tutorialButton.text.setFontSize(Math.max(this.px(13), baseScale * 0.026));
     this.newGameButton.text.setFontSize(Math.max(this.px(13), baseScale * 0.026));
     this.prevButton.text.setFontSize(Math.max(this.px(22), baseScale * 0.045));
     this.nextButton.text.setFontSize(Math.max(this.px(22), baseScale * 0.045));

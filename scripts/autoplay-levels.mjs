@@ -9,8 +9,8 @@ const BASE_URL = process.env.GEOMETRY_SLICER_URL || `http://${HOST}:${PORT}/?aut
 const HEADLESS = process.env.HEADED === '0';
 const VIEWPORT = { width: 1280, height: 800 };
 const ARTIFACT_DIR = resolve('artifacts');
-const STRATEGY_LIMIT = Number(process.env.STRATEGY_LIMIT || 3);
-const CUT_DELAY_MS = Number(process.env.CUT_DELAY_MS || 35);
+const STRATEGY_LIMIT = Number(process.env.STRATEGY_LIMIT || 100);
+const CUT_DELAY_MS = Number(process.env.CUT_DELAY_MS || 5);
 const LEVEL_LIMIT = Number(process.env.LEVEL_LIMIT || 0);
 const REPORT_BASENAME = process.env.REPORT_BASENAME || 'autoplay-report';
 
@@ -128,9 +128,11 @@ function getStrategies(level) {
   }
 
   if (level.targetPieces === 3) {
-    for (const spacing of [0.1, 0.12, 0.14, 0.16]) {
+    for (const spacing of [0.1, 0.15, 0.2, 0.266, 0.3, 0.4, 0.533, 0.6]) {
       strategies.push(stripStrategy(2, Math.PI / 2, spacing));
       strategies.push(stripStrategy(2, 0, spacing));
+      strategies.push(stripStrategy(2, Math.PI / 4, spacing));
+      strategies.push(stripStrategy(2, -Math.PI / 4, spacing));
     }
   }
 
@@ -138,9 +140,21 @@ function getStrategies(level) {
     strategies.push(
       [{ angle: 0, offset: 0 }, { angle: Math.PI / 2, offset: 0 }],
       [{ angle: Math.PI / 4, offset: 0 }, { angle: -Math.PI / 4, offset: 0 }],
-      stripStrategy(3, Math.PI / 2, 0.16),
-      stripStrategy(3, 0, 0.16),
     );
+    for (const spacing of [0.16, 0.2, 0.3, 0.4, 0.533]) {
+      strategies.push(stripStrategy(3, Math.PI / 2, spacing));
+      strategies.push(stripStrategy(3, 0, spacing));
+      strategies.push(stripStrategy(3, Math.PI / 4, spacing));
+      strategies.push(stripStrategy(3, -Math.PI / 4, spacing));
+    }
+  }
+  if (level.targetPieces === 5) {
+    for (const spacing of [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4]) {
+      strategies.push(stripStrategy(4, Math.PI / 2, spacing));
+      strategies.push(stripStrategy(4, 0, spacing));
+      strategies.push(stripStrategy(4, Math.PI / 4, spacing));
+      strategies.push(stripStrategy(4, -Math.PI / 4, spacing));
+    }
   }
 
   if (level.targetPieces === 6) {

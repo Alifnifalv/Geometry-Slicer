@@ -154,6 +154,42 @@ function generateWrench(): number[][] {
   ];
 }
 
+function generateHammer(): number[][] {
+  return [
+    [-0.4, -0.05], [0.2, -0.05],
+    [0.2, -0.25], [0.4, -0.25],
+    [0.4, 0.25], [0.2, 0.25],
+    [0.2, 0.05], [-0.4, 0.05]
+  ];
+}
+
+function generateTaperedL(): number[][] {
+  return [
+    [-0.3, -0.4], [0.1, -0.4],
+    [0.1, 0.0], [0.4, 0.0],
+    [0.4, 0.15], [-0.15, 0.15],
+    [-0.15, 0.4], [-0.3, 0.4]
+  ];
+}
+
+function generateTrickTriangle(): number[][] {
+  return [
+    [-0.4, -0.3], [0.5, -0.3],
+    [0.2, 0.4]
+  ];
+}
+
+function generateTrickCross(): number[][] {
+  return [
+    [-0.1, -0.4], [0.1, -0.4],
+    [0.1, -0.1], [0.5, -0.1],
+    [0.5, 0.1], [0.1, 0.1],
+    [0.1, 0.3], [-0.1, 0.3],
+    [-0.1, 0.1], [-0.3, 0.1],
+    [-0.3, -0.1], [-0.1, -0.1]
+  ];
+}
+
 // ---------------------------------------------------------
 // ORGANIC & IRREGULAR CURVES (Chapter 8)
 // ---------------------------------------------------------
@@ -249,7 +285,7 @@ function generateSawblade(points: number, outer: number = 0.45, inner: number = 
   for (let i = 0; i < evenPoints * 2; i++) {
     const isOuter = i % 2 === 0;
     const radius = isOuter ? outer : inner;
-    const angleOffset = isOuter ? skew : -skew; 
+    const angleOffset = isOuter ? skew : -skew;
     const angle = i * angleStep - Math.PI / 2 + angleOffset;
     shape.push([Math.cos(angle) * radius, Math.sin(angle) * radius]);
   }
@@ -286,180 +322,175 @@ function generateFatCross(size: number = 0.45, cutout: number = 0.15): number[][
 // LEVEL CONFIGURATIONS
 // ---------------------------------------------------------
 function getTolerance(globalLevelIndex: number): number {
-  const maxTol = 0.18;
-  const minTol = 0.01;
+  const maxTol = 0.20;
+  const minTol = 0.06;
   return maxTol - (globalLevelIndex / 99) * (maxTol - minTol);
 }
 
 const chapter1Levels: LevelConfig[] = [];
 for (let i = 0; i < 10; i++) {
   const tol = i < 4 ? 0.2 : getTolerance(i);
-  // Only perfectly symmetric shapes that halve into mirror images for Chapter 1
-  if (i === 0) chapter1Levels.push({ shape: generateRectangle(), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 1) chapter1Levels.push({ shape: generateCircle(0.38), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 2) chapter1Levels.push({ shape: generatePolygon(4, 0.4), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 3) chapter1Levels.push({ shape: generatePolygon(6, 0.4), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 4) chapter1Levels.push({ shape: generateHShape(0.6, 0.6, 0.2), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 5) chapter1Levels.push({ shape: generateRectangle(0.8, 0.3), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 6) chapter1Levels.push({ shape: generateCross(0.2, 0.4), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 7) chapter1Levels.push({ shape: generatePolygon(8, 0.4), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 8) chapter1Levels.push({ shape: generateRectangle(0.3, 0.8), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else chapter1Levels.push({ shape: generatePolygon(4, 0.45), targetPieces: 2, maxCuts: 1, tolerance: tol });
+  // Intro to 2 cuts / 3 pieces
+  if (i === 0) chapter1Levels.push({ shape: generateRectangle(0.8, 0.4), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 1) chapter1Levels.push({ shape: generateRectangle(0.4, 0.8), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 2) chapter1Levels.push({ shape: tShape, targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 3) chapter1Levels.push({ shape: generateHShape(0.6, 0.6, 0.2), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 4) chapter1Levels.push({ shape: generateRectangle(0.9, 0.3), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 5) chapter1Levels.push({ shape: generatePolygon(3, 0.4), targetPieces: 3, maxCuts: 2, tolerance: tol }); // Triangle
+  else if (i === 6) chapter1Levels.push({ shape: generatePolygon(4, 0.4), targetPieces: 3, maxCuts: 2, tolerance: tol }); // Square
+  else if (i === 7) chapter1Levels.push({ shape: generateCross(0.2, 0.4), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 8) chapter1Levels.push({ shape: generateCircle(0.4), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else chapter1Levels.push({ shape: tShape, targetPieces: 3, maxCuts: 2, tolerance: tol });
 }
 
 const chapter2Levels: LevelConfig[] = [];
 for (let i = 0; i < 10; i++) {
   const tol = getTolerance(10 + i);
-  // Max 2 cuts. Only shapes that cleanly cross-cut into 4 pieces.
+  // 2 cuts -> 4 pieces
   if (i === 0) chapter2Levels.push({ shape: generateRectangle(), targetPieces: 4, maxCuts: 2, tolerance: tol });
   else if (i === 1) chapter2Levels.push({ shape: generatePolygon(4, 0.4), targetPieces: 4, maxCuts: 2, tolerance: tol });
-  else if (i === 2) chapter2Levels.push({ shape: generatePolygon(6, 0.4), targetPieces: 4, maxCuts: 2, tolerance: tol });
-  else if (i === 3) chapter2Levels.push({ shape: generatePolygon(8, 0.4), targetPieces: 4, maxCuts: 2, tolerance: tol });
-  else if (i === 4) chapter2Levels.push({ shape: generateCross(0.2, 0.4), targetPieces: 4, maxCuts: 2, tolerance: tol });
-  else if (i === 5) chapter2Levels.push({ shape: generateFatCross(0.45, 0.15), targetPieces: 4, maxCuts: 2, tolerance: tol });
-  else if (i === 6) chapter2Levels.push({ shape: generateStar(4, 0.4, 0.2), targetPieces: 4, maxCuts: 2, tolerance: tol });
-  else if (i === 7) chapter2Levels.push({ shape: generateHShape(0.6, 0.6, 0.2), targetPieces: 4, maxCuts: 2, tolerance: tol });
-  else if (i === 8) chapter2Levels.push({ shape: generateCircle(0.4), targetPieces: 4, maxCuts: 2, tolerance: tol });
+  else if (i === 2) chapter2Levels.push({ shape: generateCross(0.2, 0.4), targetPieces: 4, maxCuts: 2, tolerance: tol });
+  else if (i === 3) chapter2Levels.push({ shape: generateFatCross(0.45, 0.15), targetPieces: 4, maxCuts: 2, tolerance: tol });
+  else if (i === 4) chapter2Levels.push({ shape: generatePolygon(8, 0.4), targetPieces: 4, maxCuts: 2, tolerance: tol });
+  else if (i === 5) chapter2Levels.push({ shape: generateHShape(0.6, 0.6, 0.2), targetPieces: 4, maxCuts: 2, tolerance: tol });
+  else if (i === 6) chapter2Levels.push({ shape: generateCircle(0.4), targetPieces: 4, maxCuts: 2, tolerance: tol });
+  else if (i === 7) chapter2Levels.push({ shape: generateStar(4, 0.4, 0.2), targetPieces: 4, maxCuts: 2, tolerance: tol });
+  else if (i === 8) chapter2Levels.push({ shape: generatePolygon(6, 0.4), targetPieces: 4, maxCuts: 2, tolerance: tol });
   else chapter2Levels.push({ shape: generateStar(8, 0.4, 0.2), targetPieces: 4, maxCuts: 2, tolerance: tol });
 }
 
 const chapter3Levels: LevelConfig[] = [];
 for (let i = 0; i < 10; i++) {
   const tol = getTolerance(20 + i);
-  // 3 cuts -> 6 pieces. Must have 3-fold or 6-fold symmetry.
-  const target = 6;
+  // 3 cuts -> 4 pieces (tricky shapes requiring 3 cuts to isolate areas)
+  const target = 4;
   const maxCuts = 3;
   if (i === 0) chapter3Levels.push({ shape: generatePolygon(3, 0.4), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 1) chapter3Levels.push({ shape: generatePolygon(6, 0.4), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 2) chapter3Levels.push({ shape: generateStar(3, 0.4, 0.2), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 3) chapter3Levels.push({ shape: generateStar(6, 0.4, 0.2), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 4) chapter3Levels.push({ shape: generatePinwheel(3), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 5) chapter3Levels.push({ shape: generateShuriken(3), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 6) chapter3Levels.push({ shape: generateGear(3), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 7) chapter3Levels.push({ shape: generateSawblade(6, 0.45, 0.3, 0.15), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 8) chapter3Levels.push({ shape: generatePointSymmetricGear(6, 0.45, 0.2), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 1) chapter3Levels.push({ shape: generateStar(3, 0.4, 0.2), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 2) chapter3Levels.push({ shape: generateUShape(0.6, 0.6, 0.2), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 3) chapter3Levels.push({ shape: generatePinwheel(3), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 4) chapter3Levels.push({ shape: generateShuriken(3), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 5) chapter3Levels.push({ shape: generateGear(3), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 6) chapter3Levels.push({ shape: lightningBolt, targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 7) chapter3Levels.push({ shape: generatePointSymmetricGear(6, 0.45, 0.2), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 8) chapter3Levels.push({ shape: generatePolygon(6, 0.4), targetPieces: target, maxCuts, tolerance: tol });
   else chapter3Levels.push({ shape: generateCircle(0.4), targetPieces: target, maxCuts, tolerance: tol });
 }
 
 const chapter4Levels: LevelConfig[] = [];
 for (let i = 0; i < 10; i++) {
   const tol = getTolerance(30 + i);
-  // 4 cuts -> 8 pieces. Must have 4-fold or 8-fold symmetry.
-  const target = 8;
-  const maxCuts = 4;
-  if (i === 0) chapter4Levels.push({ shape: generatePolygon(4, 0.4), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 1) chapter4Levels.push({ shape: generatePolygon(8, 0.4), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 2) chapter4Levels.push({ shape: generateStar(4, 0.4, 0.2), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 3) chapter4Levels.push({ shape: generateStar(8, 0.4, 0.2), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 4) chapter4Levels.push({ shape: generatePinwheel(4), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 5) chapter4Levels.push({ shape: generateShuriken(4), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 6) chapter4Levels.push({ shape: generateGear(4), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 7) chapter4Levels.push({ shape: generateSawblade(8, 0.45, 0.3, 0.15), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 8) chapter4Levels.push({ shape: generateCross(0.2, 0.4), targetPieces: target, maxCuts, tolerance: tol });
-  else chapter4Levels.push({ shape: generateFatCross(0.45, 0.15), targetPieces: target, maxCuts, tolerance: tol });
+  // 3 cuts -> 6 pieces
+  const target = 6;
+  const maxCuts = 3;
+  if (i === 0) chapter4Levels.push({ shape: generatePolygon(6, 0.4), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 1) chapter4Levels.push({ shape: generateStar(6, 0.4, 0.2), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 2) chapter4Levels.push({ shape: generatePolygon(3, 0.4), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 3) chapter4Levels.push({ shape: generateStar(3, 0.4, 0.2), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 4) chapter4Levels.push({ shape: generateSawblade(6, 0.45, 0.3, 0.15), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 5) chapter4Levels.push({ shape: generatePinwheel(3), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 6) chapter4Levels.push({ shape: generateShuriken(3), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 7) chapter4Levels.push({ shape: generateGear(3), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 8) chapter4Levels.push({ shape: generateFatCross(0.45, 0.15), targetPieces: target, maxCuts, tolerance: tol });
+  else chapter4Levels.push({ shape: generateCircle(0.4), targetPieces: target, maxCuts, tolerance: tol });
 }
 
 const chapter5Levels: LevelConfig[] = [];
 for (let i = 0; i < 10; i++) {
   const tol = getTolerance(40 + i);
-  // 5 cuts -> 10 pieces. Must have 5-fold or 10-fold symmetry.
-  const target = 10;
-  const maxCuts = 5;
+  // 4 cuts -> 5 pieces (complex shapes, few pieces)
+  const target = 5;
+  const maxCuts = 4;
   if (i === 0) chapter5Levels.push({ shape: generatePolygon(5, 0.4), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 1) chapter5Levels.push({ shape: generatePolygon(10, 0.4), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 2) chapter5Levels.push({ shape: generateStar(5, 0.4, 0.15), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 3) chapter5Levels.push({ shape: generateStar(10, 0.4, 0.25), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 4) chapter5Levels.push({ shape: generatePinwheel(5), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 5) chapter5Levels.push({ shape: generateShuriken(5), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 6) chapter5Levels.push({ shape: generateGear(5), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 7) chapter5Levels.push({ shape: generateSawblade(10, 0.45, 0.3, 0.15), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 8) chapter5Levels.push({ shape: generatePointSymmetricGear(10, 0.45, 0.2), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 1) chapter5Levels.push({ shape: generateStar(5, 0.4, 0.15), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 2) chapter5Levels.push({ shape: generatePinwheel(5), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 3) chapter5Levels.push({ shape: generateShuriken(5), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 4) chapter5Levels.push({ shape: generateGear(5), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 5) chapter5Levels.push({ shape: generatePointSymmetricGear(10, 0.45, 0.2), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 6) chapter5Levels.push({ shape: generatePolygon(10, 0.4), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 7) chapter5Levels.push({ shape: generateStar(10, 0.4, 0.25), targetPieces: target, maxCuts, tolerance: tol });
+  else if (i === 8) chapter5Levels.push({ shape: generateSawblade(10, 0.45, 0.3, 0.15), targetPieces: target, maxCuts, tolerance: tol });
   else chapter5Levels.push({ shape: generateCircle(0.4), targetPieces: target, maxCuts, tolerance: tol });
 }
 
 const chapter6Levels: LevelConfig[] = [];
 for (let i = 0; i < 10; i++) {
   const tol = getTolerance(50 + i);
-  // Strict matching to grid: 1 cut to bisect, or N cuts to perfectly isolate grid squares
-  if (i === 0) chapter6Levels.push({ shape: zShape, targetPieces: 4, maxCuts: 3, tolerance: tol });
+  // Asymmetric & Puzzle Blocks (2-3 cuts)
+  if (i === 0) chapter6Levels.push({ shape: zShape, targetPieces: 3, maxCuts: 2, tolerance: tol });
   else if (i === 1) chapter6Levels.push({ shape: tShape, targetPieces: 4, maxCuts: 3, tolerance: tol });
   else if (i === 2) chapter6Levels.push({ shape: lShape, targetPieces: 3, maxCuts: 2, tolerance: tol });
-  else if (i === 3) chapter6Levels.push({ shape: scaleneTriangle, targetPieces: 2, maxCuts: 1, tolerance: tol });
+  else if (i === 3) chapter6Levels.push({ shape: scaleneTriangle, targetPieces: 3, maxCuts: 2, tolerance: tol });
   else if (i === 4) chapter6Levels.push({ shape: lightningBolt, targetPieces: 4, maxCuts: 3, tolerance: tol });
-  else if (i === 5) chapter6Levels.push({ shape: generateWrench(), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 6) chapter6Levels.push({ shape: zShape, targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 7) chapter6Levels.push({ shape: tShape, targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 8) chapter6Levels.push({ shape: lShape, targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else chapter6Levels.push({ shape: generateUShape(0.6, 0.6, 0.2), targetPieces: 2, maxCuts: 1, tolerance: tol });
+  else if (i === 5) chapter6Levels.push({ shape: generateWrench(), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 6) chapter6Levels.push({ shape: zShape, targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else if (i === 7) chapter6Levels.push({ shape: tShape, targetPieces: 5, maxCuts: 4, tolerance: tol });
+  else if (i === 8) chapter6Levels.push({ shape: lShape, targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else chapter6Levels.push({ shape: generateUShape(0.6, 0.6, 0.2), targetPieces: 4, maxCuts: 3, tolerance: tol });
 }
 
 const chapter7Levels: LevelConfig[] = [];
 for (let i = 0; i < 10; i++) {
   const tol = getTolerance(60 + i);
-  // Keep hollow cuts strictly low to avoid clipping shapes into macaroni
-  if (i === 0) chapter7Levels.push({ shape: generateOpenDonut(0.45, 0.2), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 1) chapter7Levels.push({ shape: generateHollowPolygon(4, 0.45, 0.25, 0.05), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 2) chapter7Levels.push({ shape: generateHollowPolygon(3, 0.45, 0.2, 0.05), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 3) chapter7Levels.push({ shape: generateHorseshoe(0.45, 0.25), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 4) chapter7Levels.push({ shape: generateKeyhole(), targetPieces: 2, maxCuts: 1, tolerance: tol });
+  // Negative Space & Hollows (2 cuts, 3-4 pieces)
+  if (i === 0) chapter7Levels.push({ shape: generateOpenDonut(0.45, 0.2), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 1) chapter7Levels.push({ shape: generateHollowPolygon(4, 0.45, 0.25, 0.05), targetPieces: 4, maxCuts: 2, tolerance: tol });
+  else if (i === 2) chapter7Levels.push({ shape: generateHollowPolygon(3, 0.45, 0.2, 0.05), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 3) chapter7Levels.push({ shape: generateHorseshoe(0.45, 0.25), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 4) chapter7Levels.push({ shape: generateKeyhole(), targetPieces: 3, maxCuts: 2, tolerance: tol });
   else if (i === 5) chapter7Levels.push({ shape: generateOpenDonut(0.45, 0.35), targetPieces: 4, maxCuts: 2, tolerance: tol });
-  else if (i === 6) chapter7Levels.push({ shape: generateHollowPolygon(6, 0.45, 0.3, 0.02), targetPieces: 4, maxCuts: 2, tolerance: tol });
-  else if (i === 7) chapter7Levels.push({ shape: generateHorseshoe(0.45, 0.15), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else if (i === 8) chapter7Levels.push({ shape: generateKeyhole(), targetPieces: 2, maxCuts: 1, tolerance: tol });
-  else chapter7Levels.push({ shape: generateUShape(0.8, 0.6, 0.2), targetPieces: 2, maxCuts: 1, tolerance: tol });
+  else if (i === 6) chapter7Levels.push({ shape: generateHollowPolygon(6, 0.45, 0.3, 0.02), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else if (i === 7) chapter7Levels.push({ shape: generateHorseshoe(0.45, 0.15), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else if (i === 8) chapter7Levels.push({ shape: generateKeyhole(), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else chapter7Levels.push({ shape: generateUShape(0.8, 0.6, 0.2), targetPieces: 4, maxCuts: 3, tolerance: tol });
 }
 
 const chapter8Levels: LevelConfig[] = [];
 for (let i = 0; i < 10; i++) {
   const tol = getTolerance(70 + i);
-  // Strictly 1 cut. Organics cannot be multi-cut evenly by human eyeballing.
-  const maxCuts = 1;
-  const target = 2;
-  if (i === 0) chapter8Levels.push({ shape: generateCrescent(), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 1) chapter8Levels.push({ shape: generateTeardrop(), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 2) chapter8Levels.push({ shape: generateAmoeba(), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 3) chapter8Levels.push({ shape: generateInkSplat(), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 4) chapter8Levels.push({ shape: generateCrescent(), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 5) chapter8Levels.push({ shape: generateAmoeba(), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 6) chapter8Levels.push({ shape: generateTeardrop(), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 7) chapter8Levels.push({ shape: generateInkSplat(), targetPieces: target, maxCuts, tolerance: tol });
-  else if (i === 8) chapter8Levels.push({ shape: generateAmoeba(), targetPieces: target, maxCuts, tolerance: tol });
-  else chapter8Levels.push({ shape: generateInkSplat(), targetPieces: target, maxCuts, tolerance: tol });
+  // Organic & Irregular (2-3 cuts)
+  if (i === 0) chapter8Levels.push({ shape: generateCrescent(), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 1) chapter8Levels.push({ shape: generateTeardrop(), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 2) chapter8Levels.push({ shape: generateAmoeba(), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 3) chapter8Levels.push({ shape: generateInkSplat(), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 4) chapter8Levels.push({ shape: generateCrescent(), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else if (i === 5) chapter8Levels.push({ shape: generateAmoeba(), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else if (i === 6) chapter8Levels.push({ shape: generateTeardrop(), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else if (i === 7) chapter8Levels.push({ shape: generateInkSplat(), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else if (i === 8) chapter8Levels.push({ shape: generateAmoeba(), targetPieces: 4, maxCuts: 2, tolerance: tol });
+  else chapter8Levels.push({ shape: generateInkSplat(), targetPieces: 4, maxCuts: 2, tolerance: tol });
 }
 
 const chapter9Levels: LevelConfig[] = [];
 for (let i = 0; i < 10; i++) {
   const tol = getTolerance(80 + i);
-  const maxCuts = 6;
-  const target = 12;
-  const generators = [
-    () => generatePolygon(6, 0.4),
-    () => generateStar(6, 0.45, 0.25),
-    () => generatePointSymmetricGear(6, 0.45, 0.3),
-    () => generatePinwheel(6, 0.45, 0.15),
-    () => generateStar(12, 0.45, 0.3),
-    () => generateSawblade(6, 0.45, 0.3, 0.15),
-    () => generateGear(6, 0.45, 0.25),
-    () => generateShuriken(6),
-    () => generatePointSymmetricGear(12, 0.45, 0.2),
-    () => generateCircle(0.4)
-  ];
-  chapter9Levels.push({ shape: generators[i % generators.length](), targetPieces: target, maxCuts, tolerance: tol });
+  // Deceptive Shapes (2 cuts, 3-4 pieces)
+  if (i === 0) chapter9Levels.push({ shape: generateHammer(), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 1) chapter9Levels.push({ shape: generateTaperedL(), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 2) chapter9Levels.push({ shape: generateTrickTriangle(), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 3) chapter9Levels.push({ shape: generateTrickCross(), targetPieces: 3, maxCuts: 2, tolerance: tol });
+  else if (i === 4) chapter9Levels.push({ shape: generateHammer(), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else if (i === 5) chapter9Levels.push({ shape: generateWrench(), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else if (i === 6) chapter9Levels.push({ shape: generateTrickTriangle(), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else if (i === 7) chapter9Levels.push({ shape: generateTaperedL(), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else if (i === 8) chapter9Levels.push({ shape: generateTrickCross(), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else chapter9Levels.push({ shape: generateHammer(), targetPieces: 5, maxCuts: 4, tolerance: tol });
 }
 
 const chapter10Levels: LevelConfig[] = [];
 for (let i = 0; i < 10; i++) {
   const tol = getTolerance(90 + i);
-  // Mix of 6 cuts (12-fold) and 8 cuts (8-fold or 16-fold) to end the game
-  if (i % 2 === 0) {
-    chapter10Levels.push({ shape: generatePointSymmetricGear(16, 0.45, 0.25), targetPieces: 16, maxCuts: 8, tolerance: tol });
-  } else if (i === 9) {
-    chapter10Levels.push({ shape: generateStar(12, 0.45, 0.1), targetPieces: 12, maxCuts: 6, tolerance: tol });
-  } else if (i === 7) {
-    chapter10Levels.push({ shape: generatePinwheel(8, 0.45, 0.05), targetPieces: 16, maxCuts: 8, tolerance: tol });
-  } else {
-    chapter10Levels.push({ shape: generateSawblade(12, 0.45, 0.2, 0.25), targetPieces: 12, maxCuts: 6, tolerance: tol });
-  }
+  // Final mix: Human Limits (2-4 cuts, complex center of mass)
+  if (i === 0) chapter10Levels.push({ shape: generateAmoeba(), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else if (i === 1) chapter10Levels.push({ shape: generateOpenDonut(0.45, 0.2), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else if (i === 2) chapter10Levels.push({ shape: generateTaperedL(), targetPieces: 5, maxCuts: 4, tolerance: tol });
+  else if (i === 3) chapter10Levels.push({ shape: generateSawblade(5, 0.45, 0.3, 0.15), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else if (i === 4) chapter10Levels.push({ shape: generateTrickTriangle(), targetPieces: 5, maxCuts: 4, tolerance: tol });
+  else if (i === 5) chapter10Levels.push({ shape: generateHammer(), targetPieces: 5, maxCuts: 4, tolerance: tol });
+  else if (i === 6) chapter10Levels.push({ shape: generateTeardrop(), targetPieces: 5, maxCuts: 4, tolerance: tol });
+  else if (i === 7) chapter10Levels.push({ shape: generateInkSplat(), targetPieces: 5, maxCuts: 4, tolerance: tol });
+  else if (i === 8) chapter10Levels.push({ shape: generatePointSymmetricGear(5, 0.45, 0.25), targetPieces: 4, maxCuts: 3, tolerance: tol });
+  else chapter10Levels.push({ shape: generateTrickCross(), targetPieces: 5, maxCuts: 4, tolerance: tol });
 }
 
 export const Chapters: ChapterConfig[] = [
@@ -471,6 +502,6 @@ export const Chapters: ChapterConfig[] = [
   { name: "Asymmetric & Puzzle Blocks", levels: chapter6Levels },
   { name: "Negative Space & Hollows", levels: chapter7Levels },
   { name: "Organic & Irregular", levels: chapter8Levels },
-  { name: "The Gauntlet", levels: chapter9Levels },
-  { name: "Absolute Perfection", levels: chapter10Levels }
+  { name: "Deceptive Shapes", levels: chapter9Levels },
+  { name: "Human Limits", levels: chapter10Levels }
 ];
