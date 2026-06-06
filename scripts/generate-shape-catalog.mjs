@@ -31,7 +31,7 @@ if (!Array.isArray(Chapters) || Chapters.length === 0) {
 
 const itemStyles = {
   pizza: { color: '#ffcc77', stroke: '#d28c47', feature: 'circles', featureColor: '#cc3333' },
-  watermelon: { color: '#ff4455', stroke: '#228833', feature: 'dots', featureColor: '#222222' },
+  watermelon: { color: '#ff4455', stroke: '#b71f2f', feature: 'dots', featureColor: '#222222' },
   gear: { color: '#666677', stroke: '#9999aa', feature: 'gear', featureColor: '#222233' },
   chocolate: { color: '#3d2314', stroke: '#2a170d', feature: 'grid', featureColor: '#2a170d' },
   cheese: { color: '#ffcc00', stroke: '#ddaa00', feature: 'circles', featureColor: '#ddaa00' },
@@ -79,6 +79,54 @@ function pathFor(points) {
   }).join(' ') + ' Z';
 }
 
+function centroid(points) {
+  const total = points.reduce((acc, [x, y]) => ({
+    x: acc.x + x,
+    y: acc.y + y,
+  }), { x: 0, y: 0 });
+  return {
+    x: total.x / points.length,
+    y: total.y / points.length,
+  };
+}
+
+function oneSidedRind(points) {
+  const c = centroid(points);
+  let edgeIndex = 0;
+  let bestScore = -Infinity;
+
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    const edgeLength = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const midpointY = (a[1] + b[1]) / 2;
+    const score = midpointY + edgeLength * 0.05;
+    if (score > bestScore) {
+      bestScore = score;
+      edgeIndex = i;
+    }
+  }
+
+  const a = points[edgeIndex];
+  const b = points[(edgeIndex + 1) % points.length];
+  const edgeLength = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const depth = Math.min(14, Math.max(7, edgeLength * 0.16));
+  const insetTowardCenter = (point) => {
+    const dx = c.x - point[0];
+    const dy = c.y - point[1];
+    const len = Math.hypot(dx, dy) || 1;
+    return [
+      point[0] + (dx / len) * depth,
+      point[1] + (dy / len) * depth,
+    ];
+  };
+
+  return {
+    edge: [a, b],
+    points: [a, b, insetTowardCenter(b), insetTowardCenter(a)],
+  };
+}
+
 function line(x1, y1, x2, y2, attrs = '') {
   return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" ${attrs}/>`;
 }
@@ -118,13 +166,15 @@ function drawSliceGuides(cx, cy, size, level, clipId) {
   return lines.join('\n');
 }
 
-function drawFeature(style, itemType, cx, cy, box, clipId, index) {
+function drawFeature(style, itemType, cx, cy, box, clipId, index, points) {
   const out = [];
   const attrs = `clip-path="url(#${clipId})"`;
   const c = style.featureColor;
 
   if (itemType === 'watermelon') {
-    out.push(`<rect x="${(cx - box / 2).toFixed(1)}" y="${cy.toFixed(1)}" width="${box.toFixed(1)}" height="${(box / 2).toFixed(1)}" fill="#11aa33" opacity=".92" ${attrs}/>`);
+    const rind = oneSidedRind(points);
+    out.push(`<path d="${pathFor(rind.points)}" fill="#11aa33" opacity=".92" ${attrs}/>`);
+    out.push(line(rind.edge[0][0], rind.edge[0][1], rind.edge[1][0], rind.edge[1][1], `stroke="#0a8f2a" stroke-width="4.5" stroke-linecap="round" ${attrs}`));
   }
 
   if (style.feature === 'grid') {
@@ -277,7 +327,7 @@ Chapters.forEach((chapter, chapterIndex) => {
 <rect x="${(x + 9).toFixed(1)}" y="${(y + 9).toFixed(1)}" width="${(cardW - 18).toFixed(1)}" height="112" rx="7" fill="url(#grid)" opacity=".9"/>
 <clipPath id="${clipId}"><path d="${d}"/></clipPath>
 <path d="${d}" fill="${style.color}" fill-rule="evenodd" stroke="${style.stroke}" stroke-width="4" stroke-linejoin="round" filter="url(#shape-shadow)"/>
-${drawFeature(style, itemType, cx, cy, box, clipId, chapterIndex * 10 + levelIndex)}
+${drawFeature(style, itemType, cx, cy, box, clipId, chapterIndex * 10 + levelIndex, points)}
 ${drawSliceGuides(cx, cy, box, level, clipId)}
 <text x="${cx.toFixed(1)}" y="${(y + 139).toFixed(1)}" text-anchor="middle" class="cell-meta">L${String(levelIndex + 1).padStart(2, '0')}  ${level.targetPieces} pieces  ${level.maxCuts} cuts</text>
 <text x="${cx.toFixed(1)}" y="${(y + 158).toFixed(1)}" text-anchor="middle" class="cell-sub">${xml(label)}</text>

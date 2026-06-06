@@ -33,11 +33,11 @@ function generatePolygon(sides: number, radius: number = 0.4): number[][] {
   return points;
 }
 
-function generateCircle(radius: number = 0.4): number[][] {
+function generateCircle(radius: number = 0.45): number[][] {
   return generatePolygon(60, radius);
 }
 
-function generateRectangle(width: number = 0.76, height: number = 0.48): number[][] {
+function generateRectangle(width: number = 0.75, height: number = 0.45): number[][] {
   const halfWidth = width / 2;
   const halfHeight = height / 2;
   return [
@@ -46,7 +46,7 @@ function generateRectangle(width: number = 0.76, height: number = 0.48): number[
   ];
 }
 
-function generateStar(points: number, outerRadius: number = 0.4, innerRadius: number = 0.2): number[][] {
+function generateStar(points: number, outerRadius: number = 0.45, innerRadius: number = 0.15): number[][] {
   const shape: number[][] = [];
   const angleStep = Math.PI / points;
   for (let i = 0; i < points * 2; i++) {
@@ -57,7 +57,7 @@ function generateStar(points: number, outerRadius: number = 0.4, innerRadius: nu
   return shape;
 }
 
-function generateCross(thickness: number = 0.2, length: number = 0.4): number[][] {
+function generateCross(thickness: number = 0.15, length: number = 0.45): number[][] {
   const t = thickness / 2;
   return [
     [-t, -length], [t, -length], [t, -t], [length, -t],
@@ -66,7 +66,7 @@ function generateCross(thickness: number = 0.2, length: number = 0.4): number[][
   ];
 }
 
-function generateHShape(width: number = 0.6, height: number = 0.6, thickness: number = 0.2): number[][] {
+function generateHShape(width: number = 0.6, height: number = 0.6, thickness: number = 0.15): number[][] {
   const w = width / 2;
   const h = height / 2;
   const t = thickness / 2;
@@ -78,7 +78,7 @@ function generateHShape(width: number = 0.6, height: number = 0.6, thickness: nu
   ];
 }
 
-function generateUShape(width: number = 0.6, height: number = 0.6, thickness: number = 0.2): number[][] {
+function generateUShape(width: number = 0.75, height: number = 0.45, thickness: number = 0.15): number[][] {
   const w = width / 2;
   const h = height / 2;
   return [
@@ -134,17 +134,17 @@ function generateKeyhole(): number[][] {
 // ASYMMETRIC & PUZZLE BLOCKS (Chapter 6)
 // ---------------------------------------------------------
 const zShape = [
-  [-0.4, -0.4], [0.1, -0.4], [0.1, 0.0], [0.4, 0.0],
-  [0.4, 0.4], [-0.1, 0.4], [-0.1, 0.0], [-0.4, 0.0]
+  [-0.45, -0.45], [0.15, -0.45], [0.15, -0.15], [0.45, -0.15],
+  [0.45, 0.45], [-0.15, 0.45], [-0.15, -0.15], [-0.45, -0.15]
 ];
 
 const tShape = [
-  [-0.4, -0.4], [0.4, -0.4], [0.4, 0.0], [0.1, 0.0],
-  [0.1, 0.4], [-0.1, 0.4], [-0.1, 0.0], [-0.4, 0.0]
+  [-0.45, -0.45], [0.45, -0.45], [0.45, -0.15], [0.15, -0.15],
+  [0.15, 0.45], [-0.15, 0.45], [-0.15, -0.15], [-0.45, -0.15]
 ];
 
 const lShape = [
-  [-0.3, -0.4], [-0.1, -0.4], [-0.1, 0.2], [0.3, 0.2], [0.3, 0.4], [-0.3, 0.4]
+  [-0.45, -0.45], [-0.15, -0.45], [-0.15, 0.15], [0.45, 0.15], [0.45, 0.45], [-0.45, 0.45]
 ];
 
 const scaleneTriangle = [
@@ -343,7 +343,7 @@ const chapter1Levels: LevelConfig[] = [
   { shape: generateCircle(0.4), targetPieces: 3, maxCuts: 2, tolerance: getTolerance(1), mathHint: "Math Fact: To cut a circle into 3 equal areas with 2 parallel lines, cut at exactly 0.265R from the center, not 0.33R! Alternatively, make a V-cut meeting at the crust.", hintGraph: 'circle-parallel', itemType: 'pizza' },
   { shape: generateCircle(0.4), targetPieces: 4, maxCuts: 2, tolerance: getTolerance(1), mathHint: "Math Fact: A grid cut of a circle into 4 equal quadrants requires cuts exactly through the center.", itemType: 'cookie' },
   { shape: generatePolygon(3, 0.45), targetPieces: 3, maxCuts: 2, tolerance: getTolerance(1), mathHint: "Math Fact: Dividing a triangle into 3 equal horizontal strips requires cuts at ~18.4% and ~42.3% of the height from the base.", itemType: 'watermelon' },
-  { shape: generateRectangle(0.5, 0.5), targetPieces: 4, maxCuts: 2, tolerance: getTolerance(1), itemType: 'chocolate' },
+  { shape: generateRectangle(0.45, 0.45), targetPieces: 4, maxCuts: 2, tolerance: getTolerance(1), itemType: 'chocolate' },
   { shape: generatePolygon(5, 0.4), targetPieces: 3, maxCuts: 2, tolerance: getTolerance(1), itemType: 'brick' },
   { shape: generatePolygon(6, 0.4), targetPieces: 3, maxCuts: 2, tolerance: getTolerance(1), mathHint: "Math Fact: A hexagon can be split into 3 equal areas with 2 parallel cuts at roughly 20.4% of the width from the center.", itemType: 'metal' },
   { shape: generatePolygon(6, 0.4), targetPieces: 4, maxCuts: 2, tolerance: getTolerance(1), itemType: 'wood' },

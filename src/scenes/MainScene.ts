@@ -85,8 +85,8 @@ export class MainScene extends Phaser.Scene {
   private startPoint = { x: 0, y: 0 };
   private endPoint = { x: 0, y: 0 };
   private graphics!: Phaser.GameObjects.Graphics;
+  private outlineGraphics!: Phaser.GameObjects.Graphics;
   private pieceGraphicsPool: Phaser.GameObjects.Graphics[] = [];
-  private maskGraphicsPool: Phaser.GameObjects.Graphics[] = [];
   private uiGraphics!: Phaser.GameObjects.Graphics;
   private messageText!: Phaser.GameObjects.Text;
   private uiText!: Phaser.GameObjects.Text;
@@ -151,6 +151,7 @@ export class MainScene extends Phaser.Scene {
     this.bgGrid = this.add.grid(0, 0, 800, 800, 40, 40, 0x1a1a1a, 1, 0x333333, 0.5).setOrigin(0.5);
 
     this.graphics = this.add.graphics();
+    this.outlineGraphics = this.add.graphics().setDepth(50);
     this.sliceTrail = this.add.graphics().setDepth(100);
     this.uiGraphics = this.add.graphics().setDepth(101);
     this.tutorialGraphics = this.add.graphics().setDepth(102);
@@ -274,11 +275,11 @@ export class MainScene extends Phaser.Scene {
     this.hintModalGraph = this.add.graphics();
 
     this.hintModalText = this.add.text(0, 0, '', {
-      fontSize: '18px',
+      fontSize: `${this.px(18)}px`,
       color: '#000000',
       fontStyle: 'bold',
       align: 'center',
-      wordWrap: { width: 300 }
+      wordWrap: { width: this.px(300) }
     }).setOrigin(0.5);
 
     const btnWidth = this.px(100);
@@ -307,19 +308,19 @@ export class MainScene extends Phaser.Scene {
 
     this.hintModal.setPosition(cw / 2, ch / 2);
 
-    const panelWidth = Math.min(cw * 0.9, 400);
-    const panelHeight = Math.min(ch * 0.8, 500);
+    const panelWidth = Math.min(cw * 0.9, this.px(400));
+    const panelHeight = Math.min(ch * 0.8, this.px(500));
 
     this.hintModalBg.clear();
     this.hintModalBg.fillStyle(0xffffff, 1);
-    this.hintModalBg.lineStyle(4, 0x22aaff, 1);
-    this.hintModalBg.fillRoundedRect(-panelWidth/2, -panelHeight/2, panelWidth, panelHeight, 20);
-    this.hintModalBg.strokeRoundedRect(-panelWidth/2, -panelHeight/2, panelWidth, panelHeight, 20);
+    this.hintModalBg.lineStyle(this.px(4), 0x22aaff, 1);
+    this.hintModalBg.fillRoundedRect(-panelWidth/2, -panelHeight/2, panelWidth, panelHeight, this.px(20));
+    this.hintModalBg.strokeRoundedRect(-panelWidth/2, -panelHeight/2, panelWidth, panelHeight, this.px(20));
 
     this.hintModalText.setText(text || '');
-    this.hintModalText.setWordWrapWidth(panelWidth - 40);
-    this.hintModalText.setPosition(0, panelHeight/2 - 90);
-    this.hintModalClose.setPosition(0, panelHeight/2 - 30);
+    this.hintModalText.setWordWrapWidth(panelWidth - this.px(40));
+    this.hintModalText.setPosition(0, panelHeight/2 - this.px(90));
+    this.hintModalClose.setPosition(0, panelHeight/2 - this.px(30));
 
     // Draw the graph
     this.hintModalGraph.clear();
@@ -593,8 +594,8 @@ export class MainScene extends Phaser.Scene {
 
     this.uiText.setFontSize(Math.max(12, this.baseScale * 0.05));
     this.uiText.setWordWrapWidth(width * 0.9);
-    // Position HUD anchored 50px from the bottom edge
-    this.uiText.setPosition(this.centerX, height - (this.uiText.height / 2) - 30);
+    // Position HUD anchored from the bottom edge with extra spacing
+    this.uiText.setPosition(this.centerX, height - (this.uiText.height / 2) - 60);
     this.updateHUD(); // force bg redraw
 
     this.btnMenu.setPosition(this.px(60), this.px(40));
@@ -836,8 +837,8 @@ export class MainScene extends Phaser.Scene {
   private getItemStyle(type?: ItemType): { color: number, stroke: number, feature?: string, featColor?: number } {
     switch(type) {
       case 'pizza': return { color: 0xffcc77, stroke: 0xd28c47, feature: 'circles', featColor: 0xcc3333 };
-      case 'watermelon': return { color: 0xff4455, stroke: 0x228833, feature: 'dots', featColor: 0x222222 };
-      case 'gear': return { color: 0x666677, stroke: 0x9999aa, feature: 'lines', featColor: 0x888899 };
+      case 'watermelon': return { color: 0xff4455, stroke: 0xb71f2f, feature: 'dots', featColor: 0x222222 };
+      case 'gear': return { color: 0x666677, stroke: 0x9999aa, feature: 'gear', featColor: 0x222233 };
       case 'chocolate': return { color: 0x3d2314, stroke: 0x2a170d, feature: 'grid', featColor: 0x2a170d };
       case 'cheese': return { color: 0xffcc00, stroke: 0xddaa00, feature: 'circles', featColor: 0xddaa00 };
       case 'cookie': return { color: 0xddaa77, stroke: 0xbb8855, feature: 'dots', featColor: 0x4a2e1b };
@@ -848,32 +849,32 @@ export class MainScene extends Phaser.Scene {
       case 'starfish': return { color: 0xff7766, stroke: 0xcc5544, feature: 'dots', featColor: 0xcc5544 };
       case 'origami': return { color: 0xeef5ff, stroke: 0xbbccdd, feature: 'lines', featColor: 0xbbccdd };
       case 'paint': return { color: 0x11ccff, stroke: 0x0099cc, feature: 'circles', featColor: 0x00aadd };
-      case 'fried_egg': return { color: 0xffffff, stroke: 0xeeeeee, feature: 'circles', featColor: 0xffcc00 };
+      case 'fried_egg': return { color: 0xffffff, stroke: 0xeeeeee, feature: 'egg', featColor: 0xffcc00 };
       default: return { color: 0x4488ff, stroke: 0xffffff };
     }
   }
 
   private drawPieces() {
-    this.graphics.clear(); // Clear the old monolithic graphics
+    this.graphics.clear();
+    this.outlineGraphics.clear(); // Clear the old monolithic graphics
 
-    // Hide all existing pieces in the pool
-    for (const g of this.pieceGraphicsPool) g.setVisible(false);
-    // DO NOT hide mask graphics. A GeometryMask requires the graphics object to remain visible (Phaser doesn't render `make` objects to the display list, but they must be 'visible' for the stencil buffer).
+    // Hide all existing pieces in the pool.
+    for (const g of this.pieceGraphicsPool) {
+      g.clearMask();
+      g.setVisible(false);
+    }
 
     let poolIdx = 0;
     for (const piece of this.pieces) {
       if (poolIdx >= this.pieceGraphicsPool.length) {
         this.pieceGraphicsPool.push(this.add.graphics());
-        this.maskGraphicsPool.push(this.make.graphics({}));
       }
 
       const g = this.pieceGraphicsPool[poolIdx];
-      const maskG = this.maskGraphicsPool[poolIdx];
 
       g.setVisible(true);
-      maskG.setVisible(true); // Must be true for stencil buffer!
       g.clear();
-      maskG.clear();
+      g.clearMask();
 
       const style = this.getItemStyle(piece.itemType);
 
@@ -894,19 +895,62 @@ export class MainScene extends Phaser.Scene {
 
         const startPoint = transformPoint(region[0]);
 
-        // --- Create GeometryMask for this piece ---
-        maskG.beginPath();
-        maskG.moveTo(startPoint.x, startPoint.y);
-        for (let i = 1; i < region.length; i++) {
-          const p = transformPoint(region[i]);
-          maskG.lineTo(p.x, p.y);
-        }
-        maskG.closePath();
-        maskG.fillPath();
-        g.setMask(maskG.createGeometryMask());
-        // ------------------------------------------
+        const drawPiecePath = (graphics: Phaser.GameObjects.Graphics, points: number[][]) => {
+          const first = transformPoint(points[0]);
+          graphics.beginPath();
+          graphics.moveTo(first.x, first.y);
+          for (let i = 1; i < points.length; i++) {
+            const p = transformPoint(points[i]);
+            graphics.lineTo(p.x, p.y);
+          }
+          graphics.closePath();
+        };
 
-        // Draw Base Polygon
+        const getWatermelonRind = () => {
+          let rindEdgeIndex = 0;
+          let bestScore = -Infinity;
+
+          for (let i = 0; i < region.length; i++) {
+            const a = region[i];
+            const b = region[(i + 1) % region.length];
+            const edgeLength = Math.hypot(b[0] - a[0], b[1] - a[1]);
+            const midpointY = (a[1] + b[1]) / 2;
+            const score = midpointY + edgeLength * 0.05;
+            if (score > bestScore) {
+              bestScore = score;
+              rindEdgeIndex = i;
+            }
+          }
+
+          const a = region[rindEdgeIndex];
+          const b = region[(rindEdgeIndex + 1) % region.length];
+          const edgeLength = Math.hypot(b[0] - a[0], b[1] - a[1]);
+          const depth = Math.min(0.12, Math.max(0.055, edgeLength * 0.16));
+
+          const insetTowardCentroid = (point: number[]) => {
+            const dx = centroid.x - point[0];
+            const dy = centroid.y - point[1];
+            const len = Math.hypot(dx, dy) || 1;
+            return [
+              point[0] + (dx / len) * depth,
+              point[1] + (dy / len) * depth,
+            ];
+          };
+
+          return {
+            edgeIndex: rindEdgeIndex,
+            region: [
+              a,
+              b,
+              insetTowardCentroid(b),
+              insetTowardCentroid(a),
+            ],
+          };
+        };
+
+        const watermelonRind = piece.itemType === 'watermelon' ? getWatermelonRind() : null;
+
+        g.fillStyle(piece.color, piece.alpha);
         g.beginPath();
         g.moveTo(startPoint.x, startPoint.y);
         for (let i = 1; i < region.length; i++) {
@@ -916,64 +960,89 @@ export class MainScene extends Phaser.Scene {
         g.closePath();
         g.fillPath();
 
-        // Watermelon rind (green base)
-        if (piece.itemType === 'watermelon') {
+        if (watermelonRind) {
+          drawPiecePath(g, watermelonRind.region);
           g.fillStyle(0x11aa33, piece.alpha);
-          const r1 = transformPoint([-1.5, 0.2]);
-          const r2 = transformPoint([1.5, 0.2]);
-          const r3 = transformPoint([1.5, 1.5]);
-          const r4 = transformPoint([-1.5, 1.5]);
-          g.beginPath();
-          g.moveTo(r1.x, r1.y);
-          g.lineTo(r2.x, r2.y);
-          g.lineTo(r3.x, r3.y);
-          g.lineTo(r4.x, r4.y);
-          g.closePath();
           g.fillPath();
-        }
-
-        // Gear holes
-        if (piece.itemType === 'gear') {
-          g.fillStyle(0x222233, piece.alpha);
-          const c = transformPoint([0, 0]);
-          g.fillCircle(c.x, c.y, this.baseScale * 0.08);
-          for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
-            const hx = Math.cos(angle) * 0.25;
-            const hy = Math.sin(angle) * 0.25;
-            const hc = transformPoint([hx, hy]);
-            g.fillCircle(hc.x, hc.y, this.baseScale * 0.03);
-          }
         }
 
         // Minimal Styling (drawn over the base color, clipped by the mask)
         if (style.feature && style.featColor) {
-          g.fillStyle(style.featColor, piece.alpha * 0.8);
-          g.lineStyle(2, style.featColor, piece.alpha * 0.6);
+          const drawThickLine = (lx1: number, ly1: number, lx2: number, ly2: number, thickness: number) => {
+            const dx = lx2 - lx1;
+            const dy = ly2 - ly1;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            if (len === 0) return;
+            const nx = -(dy / len) * (thickness / 2);
+            const ny = (dx / len) * (thickness / 2);
 
-          if (style.feature === 'grid') {
-            for (let v = -2.5; v <= 2.5; v += 0.2) {
-              const ptStart1 = transformPoint([v, -2.5]);
-              const ptEnd1 = transformPoint([v, 2.5]);
-              g.beginPath();
-              g.moveTo(ptStart1.x, ptStart1.y);
-              g.lineTo(ptEnd1.x, ptEnd1.y);
-              g.strokePath();
+            const p1 = transformPoint([lx1 + nx, ly1 + ny]);
+            const p2 = transformPoint([lx1 - nx, ly1 - ny]);
+            const p3 = transformPoint([lx2 - nx, ly2 - ny]);
+            const p4 = transformPoint([lx2 + nx, ly2 + ny]);
 
-              const ptStart2 = transformPoint([-2.5, v]);
-              const ptEnd2 = transformPoint([2.5, v]);
-              g.beginPath();
-              g.moveTo(ptStart2.x, ptStart2.y);
-              g.lineTo(ptEnd2.x, ptEnd2.y);
-              g.strokePath();
+            g.beginPath();
+            g.moveTo(p1.x, p1.y);
+            g.lineTo(p2.x, p2.y);
+            g.lineTo(p3.x, p3.y);
+            g.lineTo(p4.x, p4.y);
+            g.closePath();
+            g.fillPath();
+          };
+
+          const drawClippedThickLine = (lx1: number, ly1: number, lx2: number, ly2: number, thickness: number) => {
+            const dx = lx2 - lx1;
+            const dy = ly2 - ly1;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            if (len === 0) return;
+
+            const segments = Math.max(1, Math.ceil(len / 0.045));
+            for (let i = 0; i < segments; i++) {
+              const t1 = i / segments;
+              const t2 = (i + 1) / segments;
+              const mid = {
+                x: lx1 + dx * ((t1 + t2) / 2),
+                y: ly1 + dy * ((t1 + t2) / 2),
+              };
+
+              if (!GeometryManager.isPointInPolygon(mid, region)) continue;
+
+              drawThickLine(
+                lx1 + dx * t1,
+                ly1 + dy * t1,
+                lx1 + dx * t2,
+                ly1 + dy * t2,
+                thickness
+              );
+            }
+          };
+
+          if (style.feature === 'gear') {
+            g.fillStyle(style.featColor, piece.alpha * 0.9);
+            const c = transformPoint([0, 0]);
+            g.fillCircle(c.x, c.y, this.baseScale * 0.08);
+            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+              const hx = Math.cos(angle) * 0.25;
+              const hy = Math.sin(angle) * 0.25;
+              const hc = transformPoint([hx, hy]);
+              g.fillCircle(hc.x, hc.y, this.baseScale * 0.03);
+            }
+          } else if (style.feature === 'egg') {
+            const c = transformPoint([0, 0]);
+            g.fillStyle(style.featColor, piece.alpha * 0.95);
+            g.fillCircle(c.x, c.y, this.baseScale * 0.15);
+            g.fillStyle(0xfff7cc, piece.alpha * 0.75);
+            g.fillCircle(c.x - this.baseScale * 0.04, c.y - this.baseScale * 0.04, this.baseScale * 0.04);
+          } else if (style.feature === 'grid') {
+            g.fillStyle(style.featColor, piece.alpha * 0.6);
+            for (let v = -2.55; v <= 2.55; v += 0.3) {
+              drawClippedThickLine(v, -2.5, v, 2.5, 2 / this.baseScale);
+              drawClippedThickLine(-2.5, v, 2.5, v, 2 / this.baseScale);
             }
           } else if (style.feature === 'lines') {
+            g.fillStyle(style.featColor, piece.alpha * 0.6);
             for (let v = -3.5; v <= 3.5; v += 0.15) {
-              const ptStart = transformPoint([-2.5, v]);
-              const ptEnd = transformPoint([2.5, v - 1.7]);
-              g.beginPath();
-              g.moveTo(ptStart.x, ptStart.y);
-              g.lineTo(ptEnd.x, ptEnd.y);
-              g.strokePath();
+              drawClippedThickLine(-2.5, v, 2.5, v - 1.7, 2 / this.baseScale);
             }
           } else {
             for (let gx = -0.8; gx <= 0.8; gx += 0.15) {
@@ -988,14 +1057,7 @@ export class MainScene extends Phaser.Scene {
                 const pt = transformPoint([jx, jy]);
 
                 if (style.feature === 'circles') {
-                  if (piece.itemType === 'fried_egg') {
-                    if (Math.abs(jx) < 0.2 && Math.abs(jy) < 0.2 && Math.abs(gx) < 0.01 && Math.abs(gy) < 0.01) {
-                      g.fillStyle(style.featColor, piece.alpha * 0.9);
-                      g.fillCircle(pt.x, pt.y, this.baseScale * 0.15);
-                      g.fillStyle(0xffffff, piece.alpha * 0.5);
-                      g.fillCircle(pt.x - this.baseScale * 0.04, pt.y - this.baseScale * 0.04, this.baseScale * 0.04);
-                    }
-                  } else if (piece.itemType === 'pizza') {
+                  if (piece.itemType === 'pizza') {
                     const radius = this.baseScale * (0.02 + Math.abs(Math.sin(jx*10)) * 0.03);
                     g.fillStyle(style.featColor, piece.alpha * 0.8);
                     g.fillCircle(pt.x, pt.y, radius);
@@ -1022,7 +1084,30 @@ export class MainScene extends Phaser.Scene {
           }
         }
 
-        g.strokePath();
+        if (watermelonRind) {
+          const rindStart = transformPoint(region[watermelonRind.edgeIndex]);
+          const rindEnd = transformPoint(region[(watermelonRind.edgeIndex + 1) % region.length]);
+          g.lineStyle(Math.max(4, this.baseScale * 0.02), 0x0a8f2a, piece.alpha);
+          g.lineBetween(rindStart.x, rindStart.y, rindEnd.x, rindEnd.y);
+
+          g.lineStyle(Math.max(3, this.baseScale * 0.014), 0xb71f2f, piece.alpha);
+          for (let i = 0; i < region.length; i++) {
+            if (i === watermelonRind.edgeIndex) continue;
+            const p1 = transformPoint(region[i]);
+            const p2 = transformPoint(region[(i + 1) % region.length]);
+            g.lineBetween(p1.x, p1.y, p2.x, p2.y);
+          }
+        } else {
+          this.outlineGraphics.lineStyle(Math.max(4, this.baseScale * 0.02), style.stroke, piece.alpha);
+          this.outlineGraphics.beginPath();
+          this.outlineGraphics.moveTo(startPoint.x, startPoint.y);
+          for (let i = 1; i < region.length; i++) {
+            const p = transformPoint(region[i]);
+            this.outlineGraphics.lineTo(p.x, p.y);
+          }
+          this.outlineGraphics.closePath();
+          this.outlineGraphics.strokePath();
+        }
       }
 
       poolIdx++;

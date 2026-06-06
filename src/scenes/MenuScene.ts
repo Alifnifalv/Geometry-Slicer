@@ -321,7 +321,12 @@ export class MenuScene extends Phaser.Scene {
     this.statsText.setFontSize(Math.max(this.px(12), baseScale * 0.026));
     this.statsText.setPosition(cx, height * 0.25);
     this.chapterText.setFontSize(Math.max(this.px(18), baseScale * 0.045));
+
+    const prevX = Math.max(this.px(42), width * 0.14);
+    const nextX = Math.min(width - this.px(42), width * 0.86);
+    this.chapterText.setWordWrapWidth(nextX - prevX - this.px(80));
     this.chapterText.setPosition(cx, height * 0.34);
+
     this.selectedText.setFontSize(Math.max(this.px(13), baseScale * 0.028));
     this.selectedText.setPosition(cx, height * 0.40);
     this.hintText.setFontSize(Math.max(this.px(11), baseScale * 0.022));
