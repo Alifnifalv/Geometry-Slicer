@@ -27,7 +27,7 @@ export class GeometryManager {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
     const len = Math.sqrt(dx * dx + dy * dy);
-    
+
     if (len === 0) return regions; // Invalid line
 
     // Create a very large rectangle on one side of the line
@@ -35,7 +35,7 @@ export class GeometryManager {
     const HUGE = 20000;
     const nx = (-dy / len) * HUGE;
     const ny = (dx / len) * HUGE;
-    
+
     const ex_x = (dx / len) * HUGE;
     const ex_y = (dy / len) * HUGE;
 
@@ -59,7 +59,7 @@ export class GeometryManager {
 
     // Piece A: intersection with the half-plane
     const pieceA = PolyBool.intersect(targetPoly, halfPlanePoly);
-    
+
     // Piece B: difference with the half-plane
     const pieceB = PolyBool.difference(targetPoly, halfPlanePoly);
 
@@ -88,5 +88,21 @@ export class GeometryManager {
       x: x / region.length,
       y: y / region.length
     };
+  }
+
+  /**
+   * Determine if a point is strictly inside a polygon region using the ray-casting algorithm.
+   */
+  static isPointInPolygon(point: {x: number, y: number}, region: number[][]): boolean {
+    let inside = false;
+    for (let i = 0, j = region.length - 1; i < region.length; j = i++) {
+      const xi = region[i][0], yi = region[i][1];
+      const xj = region[j][0], yj = region[j][1];
+
+      const intersect = ((yi > point.y) !== (yj > point.y))
+          && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
   }
 }

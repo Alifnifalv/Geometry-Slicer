@@ -1,12 +1,14 @@
 import Phaser from 'phaser';
 import { GeometryManager } from '../GeometryManager';
 import { Chapters } from '../LevelData';
+import type { ItemType } from '../LevelData';
 import { playablesPlatform } from '../playables';
 import { soundManager } from '../SoundManager';
 
 interface ShapePiece {
   region: number[][]; // Polygon vertices in relative world space (e.g., -0.5 to 0.5)
   color: number;
+  itemType?: ItemType;
   offsetX: number; // Relative offset
   offsetY: number; // Relative offset
   alpha: number;
@@ -96,8 +98,15 @@ export class MainScene extends Phaser.Scene {
 
   private btnMenu!: Phaser.GameObjects.Container;
   private btnRestart!: Phaser.GameObjects.Container;
+  private btnHint!: Phaser.GameObjects.Container;
   private popupBg!: Phaser.GameObjects.Graphics;
   private bgGrid!: Phaser.GameObjects.Grid;
+
+  private hintModal!: Phaser.GameObjects.Container;
+  private hintModalBg!: Phaser.GameObjects.Graphics;
+  private hintModalGraph!: Phaser.GameObjects.Graphics;
+  private hintModalText!: Phaser.GameObjects.Text;
+  private hintModalClose!: Phaser.GameObjects.Container;
 
   private baseScale = 1;
   private centerX = 0;
@@ -169,6 +178,7 @@ export class MainScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     this.createButtons();
+    this.createMathHintModal();
 
     this.scale.on('resize', this.resize, this);
     this.resize(this.scale.gameSize);
@@ -227,6 +237,156 @@ export class MainScene extends Phaser.Scene {
       this.initLevel();
     });
     restart.zone.on('pointerout', () => this.btnRestart.setScale(1));
+
+    const hint = createBtn('💡 HINT', 0x22aaff);
+    this.btnHint = hint.container;
+    hint.zone.on('pointerdown', () => {
+      soundManager.init();
+      this.btnHint.setScale(0.9);
+    });
+    hint.zone.on('pointerup', () => {
+      soundManager.playClickSound();
+      this.btnHint.setScale(1);
+      const chapter = Chapters[this.currentChapterIndex];
+      const level = chapter.levels[this.currentLevelIndex];
+
+      if (level.hintGraph) {
+        this.showMathHintModal(level.hintGraph, level.mathHint);
+      } else if (level.mathHint) {
+        this.showPopup(level.mathHint, '#00ffff', 4000);
+      }
+    });
+    hint.zone.on('pointerout', () => this.btnHint.setScale(1));
+  }
+
+  private createMathHintModal() {
+    this.hintModal = this.add.container(0, 0);
+    this.hintModal.setVisible(false);
+    this.hintModal.setDepth(100);
+
+    const overlay = this.add.rectangle(0, 0, 4000, 4000, 0x000000, 0.7);
+    overlay.setInteractive(); // Block clicks to game behind
+
+    this.hintModalBg = this.add.graphics();
+    this.hintModalGraph = this.add.graphics();
+
+    this.hintModalText = this.add.text(0, 0, '', {
+      fontSize: '18px',
+      color: '#000000',
+      fontStyle: 'bold',
+      align: 'center',
+      wordWrap: { width: 300 }
+    }).setOrigin(0.5);
+
+    const btnWidth = this.px(100);
+    const btnHeight = this.px(40);
+    this.hintModalClose = this.add.container(0, 0);
+    const closeBg = this.add.graphics().fillStyle(0xff3333, 1).fillRoundedRect(-btnWidth/2, -btnHeight/2, btnWidth, btnHeight, this.px(10));
+    const closeTxt = this.add.text(0, 0, 'CLOSE', { fontSize: `${this.px(16)}px`, color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5);
+    const closeZone = this.add.zone(0, 0, btnWidth, btnHeight).setInteractive({useHandCursor:true}).setOrigin(0.5);
+    closeZone.on('pointerdown', () => this.hideMathHintModal());
+    this.hintModalClose.add([closeBg, closeTxt, closeZone]);
+
+    this.hintModal.add([overlay, this.hintModalBg, this.hintModalGraph, this.hintModalText, this.hintModalClose]);
+  }
+
+  private hideMathHintModal() {
+    soundManager.playClickSound();
+    this.hintModal.setVisible(false);
+  }
+
+  private showMathHintModal(hintGraph: string, text?: string) {
+    this.hintModal.setVisible(true);
+    this.isDragging = false;
+
+    const cw = this.scale.gameSize.width;
+    const ch = this.scale.gameSize.height;
+
+    this.hintModal.setPosition(cw / 2, ch / 2);
+
+    const panelWidth = Math.min(cw * 0.9, 400);
+    const panelHeight = Math.min(ch * 0.8, 500);
+
+    this.hintModalBg.clear();
+    this.hintModalBg.fillStyle(0xffffff, 1);
+    this.hintModalBg.lineStyle(4, 0x22aaff, 1);
+    this.hintModalBg.fillRoundedRect(-panelWidth/2, -panelHeight/2, panelWidth, panelHeight, 20);
+    this.hintModalBg.strokeRoundedRect(-panelWidth/2, -panelHeight/2, panelWidth, panelHeight, 20);
+
+    this.hintModalText.setText(text || '');
+    this.hintModalText.setWordWrapWidth(panelWidth - 40);
+    this.hintModalText.setPosition(0, panelHeight/2 - 90);
+    this.hintModalClose.setPosition(0, panelHeight/2 - 30);
+
+    // Draw the graph
+    this.hintModalGraph.clear();
+    const g = this.hintModalGraph;
+    const radius = Math.min(panelWidth, panelHeight) * 0.35;
+    const cy = -50;
+
+    if (hintGraph === 'circle-parallel') {
+        // Pizza circle
+        g.fillStyle(0xffcc77, 1);
+        g.lineStyle(4, 0xd28c47, 1);
+        g.fillCircle(0, cy, radius);
+        g.strokeCircle(0, cy, radius);
+
+        // 2 parallel lines
+        const d = radius * 0.265;
+        g.lineStyle(3, 0xcc3333, 1);
+        // To draw dashed lines, phaser Graphics doesn't have setLineDash natively.
+        // We'll just draw solid lines for simplicity, or manually draw dashes.
+        // Let's use solid lines.
+        g.beginPath(); g.moveTo(-d, cy - radius - 30); g.lineTo(-d, cy + radius + 30); g.strokePath();
+        g.beginPath(); g.moveTo(d, cy - radius - 30); g.lineTo(d, cy + radius + 30); g.strokePath();
+
+        // Center dot
+        g.fillStyle(0x000000, 1);
+        g.fillCircle(0, cy, 6);
+
+        // Arrows representing 0.265R
+        g.lineStyle(2, 0x000000, 1);
+        g.beginPath(); g.moveTo(0, cy); g.lineTo(d, cy); g.strokePath();
+        g.beginPath(); g.moveTo(0, cy); g.lineTo(-d, cy); g.strokePath();
+
+        // Triangle arrow heads
+        g.fillStyle(0x000000, 1);
+        g.fillTriangle(d, cy, d-8, cy-5, d-8, cy+5);
+        g.fillTriangle(-d, cy, -d+8, cy-5, -d+8, cy+5);
+
+    } else if (hintGraph === 'circle-vcut') {
+        // Pizza circle
+        g.fillStyle(0xffcc77, 1);
+        g.lineStyle(4, 0xd28c47, 1);
+        g.fillCircle(0, cy, radius);
+        g.strokeCircle(0, cy, radius);
+
+        // V-cut
+        g.lineStyle(3, 0xcc3333, 1);
+        const bottomY = cy + radius;
+        g.beginPath(); g.moveTo(0, bottomY); g.lineTo(-radius*1.2, cy - radius*0.5); g.strokePath();
+        g.beginPath(); g.moveTo(0, bottomY); g.lineTo(radius*1.2, cy - radius*0.5); g.strokePath();
+
+        // Intersection Point
+        g.fillStyle(0xcc3333, 1);
+        g.fillCircle(0, bottomY, 8);
+
+    } else if (hintGraph === 'rectangle-thirds') {
+        // Wood rectangle
+        g.fillStyle(0xc19a6b, 1);
+        g.lineStyle(4, 0xa07a4b, 1);
+        g.fillRect(-radius, cy - radius*0.6, radius*2, radius*1.2);
+        g.strokeRect(-radius, cy - radius*0.6, radius*2, radius*1.2);
+
+        // parallel lines
+        const d = radius * 0.333; // 1/6 of total width = 1/3 of half width
+        g.lineStyle(3, 0x3333cc, 1);
+        g.beginPath(); g.moveTo(-d, cy - radius); g.lineTo(-d, cy + radius); g.strokePath();
+        g.beginPath(); g.moveTo(d, cy - radius); g.lineTo(d, cy + radius); g.strokePath();
+
+        g.fillStyle(0x000000, 1);
+        g.fillCircle(0, cy, 6);
+    }
   }
 
   private initLevel() {
@@ -248,11 +408,16 @@ export class MainScene extends Phaser.Scene {
     const level = chapter.levels[this.currentLevelIndex];
     this.cutsRemaining = level.maxCuts;
     this.cutsUsedThisLevel = 0;
+
+    this.btnHint.setVisible(!!level.mathHint);
     void playablesPlatform.recordAttempt(this.currentChapterIndex, this.currentLevelIndex);
+
+    const baseColor = this.getItemStyle(level.itemType).color;
 
     this.pieces = [{
       region: level.shape,
-      color: 0x4488ff,
+      color: baseColor,
+      itemType: level.itemType,
       offsetX: 0,
       offsetY: 0,
       alpha: 1,
@@ -430,13 +595,14 @@ export class MainScene extends Phaser.Scene {
     this.updateHUD(); // force bg redraw
 
     this.btnMenu.setPosition(this.px(60), this.px(40));
+    this.btnHint.setPosition(this.centerX, this.px(40));
     this.btnRestart.setPosition(width - this.px(60), this.px(40));
 
     // Redraw pieces with the new scale
     this.drawPieces();
   }
 
-  private showPopup(text: string, color: string) {
+  private showPopup(text: string, color: string, duration: number = 2000) {
     this.messageText.setText(text);
     this.messageText.setColor(color);
     this.messageText.setScale(0.5);
@@ -449,11 +615,18 @@ export class MainScene extends Phaser.Scene {
       targets: this.messageText,
       scale: 1,
       alpha: 1,
-      ease: 'Back.easeOut',
-      duration: 400,
-      onUpdate: () => this.drawPopupBg()
+      duration: 300,
+      ease: 'Back.out',
+      yoyo: true,
+      hold: duration,
+      onComplete: () => {
+        this.messageText.setText('');
+        this.drawPopupBg();
+      }
     });
   }
+
+
 
   private drawPopupBg() {
     this.popupBg.clear();
@@ -619,8 +792,16 @@ export class MainScene extends Phaser.Scene {
           const dot = v_dx * nx + v_dy * ny;
           const sign = dot > 0 ? 1 : -1;
 
-          // Randomize color to visually confirm cut
-          const newColor = Phaser.Display.Color.RandomRGB().color;
+          // Vary color slightly to visually distinguish cut pieces
+          let newColor = piece.color;
+          if (piece.itemType) {
+            const rgb = Phaser.Display.Color.IntegerToColor(piece.color);
+            const variation = (Math.random() * 40 - 20); // slightly lighter or darker
+            rgb.lighten(variation);
+            newColor = rgb.color;
+          } else {
+            newColor = Phaser.Display.Color.RandomRGB().color;
+          }
 
           // Add a relative offset representing a few pixels apart
           // e.g. 0.02 relative units
@@ -629,6 +810,7 @@ export class MainScene extends Phaser.Scene {
             newPieces.push({
               region: r,
               color: newColor,
+              itemType: piece.itemType,
               offsetX: nx * sign * pushForce,
               offsetY: ny * sign * pushForce,
               alpha: 1,
@@ -648,13 +830,34 @@ export class MainScene extends Phaser.Scene {
     return wasSliced;
   }
 
+  private getItemStyle(type?: ItemType): { color: number, stroke: number, feature?: string, featColor?: number } {
+    switch(type) {
+      case 'pizza': return { color: 0xffcc77, stroke: 0xd28c47, feature: 'circles', featColor: 0xcc3333 };
+      case 'watermelon': return { color: 0xff4455, stroke: 0x228833, feature: 'dots', featColor: 0x222222 };
+      case 'gear': return { color: 0x666677, stroke: 0x9999aa, feature: 'lines', featColor: 0x888899 };
+      case 'chocolate': return { color: 0x3d2314, stroke: 0x2a170d, feature: 'grid', featColor: 0x2a170d };
+      case 'cheese': return { color: 0xffcc00, stroke: 0xddaa00, feature: 'circles', featColor: 0xddaa00 };
+      case 'cookie': return { color: 0xddaa77, stroke: 0xbb8855, feature: 'dots', featColor: 0x4a2e1b };
+      case 'brick': return { color: 0xaa4433, stroke: 0x883322, feature: 'lines', featColor: 0x883322 };
+      case 'leaf': return { color: 0x44aa44, stroke: 0x227722, feature: 'lines', featColor: 0x227722 };
+      case 'wood': return { color: 0xc19a6b, stroke: 0xa07a4b, feature: 'lines', featColor: 0xa07a4b };
+      case 'metal': return { color: 0x8899aa, stroke: 0xaabbcc, feature: 'dots', featColor: 0x667788 };
+      case 'starfish': return { color: 0xff7766, stroke: 0xcc5544, feature: 'dots', featColor: 0xcc5544 };
+      case 'origami': return { color: 0xeef5ff, stroke: 0xbbccdd, feature: 'lines', featColor: 0xbbccdd };
+      case 'paint': return { color: 0x11ccff, stroke: 0x0099cc, feature: 'circles', featColor: 0x00aadd };
+      case 'fried_egg': return { color: 0xffffff, stroke: 0xeeeeee, feature: 'circles', featColor: 0xffcc00 };
+      default: return { color: 0x4488ff, stroke: 0xffffff };
+    }
+  }
+
   private drawPieces() {
     this.graphics.clear();
 
     for (const piece of this.pieces) {
+      const style = this.getItemStyle(piece.itemType);
+
       this.graphics.fillStyle(piece.color, piece.alpha);
-      // Scale line stroke thickness dynamically
-      this.graphics.lineStyle(Math.max(2, this.baseScale * 0.01), 0xffffff, piece.alpha);
+      this.graphics.lineStyle(Math.max(2, this.baseScale * 0.01), style.stroke, piece.alpha);
       this.graphics.beginPath();
 
       const region = piece.region;
@@ -681,6 +884,113 @@ export class MainScene extends Phaser.Scene {
 
         this.graphics.closePath();
         this.graphics.fillPath();
+
+        // --- Create a GeometryMask exactly matching this piece ---
+        const maskGraphics = this.make.graphics({});
+        maskGraphics.beginPath();
+        maskGraphics.moveTo(startPoint.x, startPoint.y);
+        for (let i = 1; i < region.length; i++) {
+          const p = transformPoint(region[i]);
+          maskGraphics.lineTo(p.x, p.y);
+        }
+        maskGraphics.closePath();
+        maskGraphics.fillPath();
+        const mask = maskGraphics.createGeometryMask();
+        this.graphics.setMask(mask);
+        // ---------------------------------------------------------
+
+        // Watermelon rind (green base)
+        if (piece.itemType === 'watermelon') {
+          this.graphics.fillStyle(0x11aa33, piece.alpha);
+          const r1 = transformPoint([-1.5, 0.2]);
+          const r2 = transformPoint([1.5, 0.2]);
+          const r3 = transformPoint([1.5, 1.5]);
+          const r4 = transformPoint([-1.5, 1.5]);
+          this.graphics.beginPath();
+          this.graphics.moveTo(r1.x, r1.y);
+          this.graphics.lineTo(r2.x, r2.y);
+          this.graphics.lineTo(r3.x, r3.y);
+          this.graphics.lineTo(r4.x, r4.y);
+          this.graphics.closePath();
+          this.graphics.fillPath();
+        }
+
+        // Gear holes
+        if (piece.itemType === 'gear') {
+          this.graphics.fillStyle(0x222233, piece.alpha);
+          const c = transformPoint([0, 0]);
+          this.graphics.fillCircle(c.x, c.y, this.baseScale * 0.08);
+          for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+            const hx = Math.cos(angle) * 0.25;
+            const hy = Math.sin(angle) * 0.25;
+            const hc = transformPoint([hx, hy]);
+            this.graphics.fillCircle(hc.x, hc.y, this.baseScale * 0.03);
+          }
+        }
+
+        // Minimal Styling (drawn over the base color, clipped by the mask)
+        if (style.feature && style.featColor) {
+          this.graphics.fillStyle(style.featColor, piece.alpha * 0.8);
+          this.graphics.lineStyle(2, style.featColor, piece.alpha * 0.6);
+
+          for (let gx = -0.8; gx <= 0.8; gx += 0.15) {
+            for (let gy = -0.8; gy <= 0.8; gy += 0.15) {
+              const jx = gx + Math.sin(gx * 50 + gy * 30) * 0.05;
+              const jy = gy + Math.cos(gy * 50 + gx * 30) * 0.05;
+              const pt = transformPoint([jx, jy]);
+
+              if (style.feature === 'circles') {
+                if (piece.itemType === 'fried_egg') {
+                  if (Math.abs(jx) < 0.2 && Math.abs(jy) < 0.2 && Math.abs(gx) < 0.01 && Math.abs(gy) < 0.01) {
+                    this.graphics.fillStyle(style.featColor, piece.alpha * 0.9);
+                    this.graphics.fillCircle(pt.x, pt.y, this.baseScale * 0.15);
+                    this.graphics.fillStyle(0xffffff, piece.alpha * 0.5);
+                    this.graphics.fillCircle(pt.x - this.baseScale * 0.04, pt.y - this.baseScale * 0.04, this.baseScale * 0.04);
+                  }
+                } else if (piece.itemType === 'pizza') {
+                  const radius = this.baseScale * (0.02 + Math.abs(Math.sin(jx*10)) * 0.03);
+                  this.graphics.fillStyle(style.featColor, piece.alpha * 0.8);
+                  this.graphics.fillCircle(pt.x, pt.y, radius);
+                  // Add tiny green toppings
+                  if (Math.abs(Math.cos(jx*20 + jy*15)) > 0.6) {
+                    this.graphics.fillStyle(0x225511, piece.alpha * 0.8);
+                    const gp = transformPoint([jx + 0.05, jy + 0.05]);
+                    this.graphics.fillCircle(gp.x, gp.y, this.baseScale * 0.01);
+                  }
+                } else if (piece.itemType === 'cheese') {
+                  const radius = this.baseScale * (0.02 + Math.abs(Math.cos(jy*20)) * 0.04);
+                  this.graphics.fillStyle(style.featColor, piece.alpha * 0.8);
+                  this.graphics.fillCircle(pt.x, pt.y, radius);
+                } else {
+                  this.graphics.fillStyle(style.featColor, piece.alpha * 0.8);
+                  this.graphics.fillCircle(pt.x, pt.y, this.baseScale * 0.03);
+                }
+              } else if (style.feature === 'dots') {
+                this.graphics.fillStyle(style.featColor, piece.alpha * 0.8);
+                this.graphics.fillCircle(pt.x, pt.y, this.baseScale * 0.01);
+              } else if (style.feature === 'lines') {
+                this.graphics.beginPath();
+                this.graphics.moveTo(pt.x, pt.y);
+                const ptEnd = transformPoint([jx + 0.1, jy + (Math.sin(jx*10)*0.1)]);
+                this.graphics.lineTo(ptEnd.x, ptEnd.y);
+                this.graphics.strokePath();
+              } else if (style.feature === 'grid') {
+                this.graphics.beginPath();
+                this.graphics.moveTo(pt.x - 15, pt.y);
+                this.graphics.lineTo(pt.x + 15, pt.y);
+                this.graphics.moveTo(pt.x, pt.y - 15);
+                this.graphics.lineTo(pt.x, pt.y + 15);
+                this.graphics.strokePath();
+              }
+            }
+          }
+        }
+
+        // --- Remove the mask ---
+        this.graphics.clearMask();
+        maskGraphics.destroy();
+        // -----------------------
+
         this.graphics.strokePath();
       }
     }
