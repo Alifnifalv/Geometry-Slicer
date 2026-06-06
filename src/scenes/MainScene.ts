@@ -85,6 +85,8 @@ export class MainScene extends Phaser.Scene {
   private startPoint = { x: 0, y: 0 };
   private endPoint = { x: 0, y: 0 };
   private graphics!: Phaser.GameObjects.Graphics;
+  private pieceGraphicsPool: Phaser.GameObjects.Graphics[] = [];
+  private maskGraphicsPool: Phaser.GameObjects.Graphics[] = [];
   private uiGraphics!: Phaser.GameObjects.Graphics;
   private messageText!: Phaser.GameObjects.Text;
   private uiText!: Phaser.GameObjects.Text;
@@ -851,22 +853,36 @@ export class MainScene extends Phaser.Scene {
   }
 
   private drawPieces() {
-    this.graphics.clear();
+    this.graphics.clear(); // Clear the old monolithic graphics
 
+    // Hide all existing pieces in the pool
+    for (const g of this.pieceGraphicsPool) g.setVisible(false);
+    for (const mg of this.maskGraphicsPool) mg.setVisible(false);
+
+    let poolIdx = 0;
     for (const piece of this.pieces) {
+      if (poolIdx >= this.pieceGraphicsPool.length) {
+        this.pieceGraphicsPool.push(this.add.graphics());
+        this.maskGraphicsPool.push(this.make.graphics({}));
+      }
+
+      const g = this.pieceGraphicsPool[poolIdx];
+      const maskG = this.maskGraphicsPool[poolIdx];
+
+      g.setVisible(true);
+      g.clear();
+      maskG.clear();
+
       const style = this.getItemStyle(piece.itemType);
 
-      this.graphics.fillStyle(piece.color, piece.alpha);
-      this.graphics.lineStyle(Math.max(2, this.baseScale * 0.01), style.stroke, piece.alpha);
-      this.graphics.beginPath();
+      g.fillStyle(piece.color, piece.alpha);
+      g.lineStyle(Math.max(2, this.baseScale * 0.01), style.stroke, piece.alpha);
 
       const region = piece.region;
       if (region.length > 0) {
-        // Calculate centroid of the raw region for scaling around its own center
         const centroid = GeometryManager.getCentroid(region);
 
         const transformPoint = (p: number[]) => {
-          // Move to origin, scale, move back to centroid, then apply offsets
           const dx = p[0] - centroid.x;
           const dy = p[1] - centroid.y;
           const sx = centroid.x + dx * piece.scale + piece.offsetX;
@@ -875,124 +891,125 @@ export class MainScene extends Phaser.Scene {
         };
 
         const startPoint = transformPoint(region[0]);
-        this.graphics.moveTo(startPoint.x, startPoint.y);
 
+        // --- Create GeometryMask for this piece ---
+        maskG.beginPath();
+        maskG.moveTo(startPoint.x, startPoint.y);
         for (let i = 1; i < region.length; i++) {
           const p = transformPoint(region[i]);
-          this.graphics.lineTo(p.x, p.y);
+          maskG.lineTo(p.x, p.y);
         }
+        maskG.closePath();
+        maskG.fillPath();
+        g.setMask(maskG.createGeometryMask());
+        // ------------------------------------------
 
-        this.graphics.closePath();
-        this.graphics.fillPath();
-
-        // --- Create a GeometryMask exactly matching this piece ---
-        const maskGraphics = this.make.graphics({});
-        maskGraphics.beginPath();
-        maskGraphics.moveTo(startPoint.x, startPoint.y);
+        // Draw Base Polygon
+        g.beginPath();
+        g.moveTo(startPoint.x, startPoint.y);
         for (let i = 1; i < region.length; i++) {
           const p = transformPoint(region[i]);
-          maskGraphics.lineTo(p.x, p.y);
+          g.lineTo(p.x, p.y);
         }
-        maskGraphics.closePath();
-        maskGraphics.fillPath();
-        const mask = maskGraphics.createGeometryMask();
-        this.graphics.setMask(mask);
-        // ---------------------------------------------------------
+        g.closePath();
+        g.fillPath();
 
         // Watermelon rind (green base)
         if (piece.itemType === 'watermelon') {
-          this.graphics.fillStyle(0x11aa33, piece.alpha);
+          g.fillStyle(0x11aa33, piece.alpha);
           const r1 = transformPoint([-1.5, 0.2]);
           const r2 = transformPoint([1.5, 0.2]);
           const r3 = transformPoint([1.5, 1.5]);
           const r4 = transformPoint([-1.5, 1.5]);
-          this.graphics.beginPath();
-          this.graphics.moveTo(r1.x, r1.y);
-          this.graphics.lineTo(r2.x, r2.y);
-          this.graphics.lineTo(r3.x, r3.y);
-          this.graphics.lineTo(r4.x, r4.y);
-          this.graphics.closePath();
-          this.graphics.fillPath();
+          g.beginPath();
+          g.moveTo(r1.x, r1.y);
+          g.lineTo(r2.x, r2.y);
+          g.lineTo(r3.x, r3.y);
+          g.lineTo(r4.x, r4.y);
+          g.closePath();
+          g.fillPath();
         }
 
         // Gear holes
         if (piece.itemType === 'gear') {
-          this.graphics.fillStyle(0x222233, piece.alpha);
+          g.fillStyle(0x222233, piece.alpha);
           const c = transformPoint([0, 0]);
-          this.graphics.fillCircle(c.x, c.y, this.baseScale * 0.08);
+          g.fillCircle(c.x, c.y, this.baseScale * 0.08);
           for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
             const hx = Math.cos(angle) * 0.25;
             const hy = Math.sin(angle) * 0.25;
             const hc = transformPoint([hx, hy]);
-            this.graphics.fillCircle(hc.x, hc.y, this.baseScale * 0.03);
+            g.fillCircle(hc.x, hc.y, this.baseScale * 0.03);
           }
         }
 
         // Minimal Styling (drawn over the base color, clipped by the mask)
         if (style.feature && style.featColor) {
-          this.graphics.fillStyle(style.featColor, piece.alpha * 0.8);
-          this.graphics.lineStyle(2, style.featColor, piece.alpha * 0.6);
+          g.fillStyle(style.featColor, piece.alpha * 0.8);
+          g.lineStyle(2, style.featColor, piece.alpha * 0.6);
 
           for (let gx = -0.8; gx <= 0.8; gx += 0.15) {
             for (let gy = -0.8; gy <= 0.8; gy += 0.15) {
               const jx = gx + Math.sin(gx * 50 + gy * 30) * 0.05;
               const jy = gy + Math.cos(gy * 50 + gx * 30) * 0.05;
+
+              // Ensure we only draw features near the polygon to save processing
+              // and prevent wild rendering if masks ever fail.
+              if (!GeometryManager.isPointInPolygon({x: jx, y: jy}, region)) continue;
+
               const pt = transformPoint([jx, jy]);
 
               if (style.feature === 'circles') {
                 if (piece.itemType === 'fried_egg') {
                   if (Math.abs(jx) < 0.2 && Math.abs(jy) < 0.2 && Math.abs(gx) < 0.01 && Math.abs(gy) < 0.01) {
-                    this.graphics.fillStyle(style.featColor, piece.alpha * 0.9);
-                    this.graphics.fillCircle(pt.x, pt.y, this.baseScale * 0.15);
-                    this.graphics.fillStyle(0xffffff, piece.alpha * 0.5);
-                    this.graphics.fillCircle(pt.x - this.baseScale * 0.04, pt.y - this.baseScale * 0.04, this.baseScale * 0.04);
+                    g.fillStyle(style.featColor, piece.alpha * 0.9);
+                    g.fillCircle(pt.x, pt.y, this.baseScale * 0.15);
+                    g.fillStyle(0xffffff, piece.alpha * 0.5);
+                    g.fillCircle(pt.x - this.baseScale * 0.04, pt.y - this.baseScale * 0.04, this.baseScale * 0.04);
                   }
                 } else if (piece.itemType === 'pizza') {
                   const radius = this.baseScale * (0.02 + Math.abs(Math.sin(jx*10)) * 0.03);
-                  this.graphics.fillStyle(style.featColor, piece.alpha * 0.8);
-                  this.graphics.fillCircle(pt.x, pt.y, radius);
+                  g.fillStyle(style.featColor, piece.alpha * 0.8);
+                  g.fillCircle(pt.x, pt.y, radius);
                   // Add tiny green toppings
                   if (Math.abs(Math.cos(jx*20 + jy*15)) > 0.6) {
-                    this.graphics.fillStyle(0x225511, piece.alpha * 0.8);
+                    g.fillStyle(0x225511, piece.alpha * 0.8);
                     const gp = transformPoint([jx + 0.05, jy + 0.05]);
-                    this.graphics.fillCircle(gp.x, gp.y, this.baseScale * 0.01);
+                    g.fillCircle(gp.x, gp.y, this.baseScale * 0.01);
                   }
                 } else if (piece.itemType === 'cheese') {
                   const radius = this.baseScale * (0.02 + Math.abs(Math.cos(jy*20)) * 0.04);
-                  this.graphics.fillStyle(style.featColor, piece.alpha * 0.8);
-                  this.graphics.fillCircle(pt.x, pt.y, radius);
+                  g.fillStyle(style.featColor, piece.alpha * 0.8);
+                  g.fillCircle(pt.x, pt.y, radius);
                 } else {
-                  this.graphics.fillStyle(style.featColor, piece.alpha * 0.8);
-                  this.graphics.fillCircle(pt.x, pt.y, this.baseScale * 0.03);
+                  g.fillStyle(style.featColor, piece.alpha * 0.8);
+                  g.fillCircle(pt.x, pt.y, this.baseScale * 0.03);
                 }
               } else if (style.feature === 'dots') {
-                this.graphics.fillStyle(style.featColor, piece.alpha * 0.8);
-                this.graphics.fillCircle(pt.x, pt.y, this.baseScale * 0.01);
+                g.fillStyle(style.featColor, piece.alpha * 0.8);
+                g.fillCircle(pt.x, pt.y, this.baseScale * 0.01);
               } else if (style.feature === 'lines') {
-                this.graphics.beginPath();
-                this.graphics.moveTo(pt.x, pt.y);
+                g.beginPath();
+                g.moveTo(pt.x, pt.y);
                 const ptEnd = transformPoint([jx + 0.1, jy + (Math.sin(jx*10)*0.1)]);
-                this.graphics.lineTo(ptEnd.x, ptEnd.y);
-                this.graphics.strokePath();
+                g.lineTo(ptEnd.x, ptEnd.y);
+                g.strokePath();
               } else if (style.feature === 'grid') {
-                this.graphics.beginPath();
-                this.graphics.moveTo(pt.x - 15, pt.y);
-                this.graphics.lineTo(pt.x + 15, pt.y);
-                this.graphics.moveTo(pt.x, pt.y - 15);
-                this.graphics.lineTo(pt.x, pt.y + 15);
-                this.graphics.strokePath();
+                g.beginPath();
+                g.moveTo(pt.x - 15, pt.y);
+                g.lineTo(pt.x + 15, pt.y);
+                g.moveTo(pt.x, pt.y - 15);
+                g.lineTo(pt.x, pt.y + 15);
+                g.strokePath();
               }
             }
           }
         }
 
-        // --- Remove the mask ---
-        this.graphics.clearMask();
-        maskGraphics.destroy();
-        // -----------------------
-
-        this.graphics.strokePath();
+        g.strokePath();
       }
+
+      poolIdx++;
     }
 
     // Draw center crosshair and anchor point to help with logical cuts.
